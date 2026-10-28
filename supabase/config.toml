@@ -1,0 +1,25 @@
+# Local Supabase (CLI) settings. Other keys use the CLI defaults.
+# On a hosted project, mirror the auth settings in Dashboard > Authentication.
+project_id = "modulate-app"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+enable_signup = true
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+# No email confirmation: a new account is signed in immediately.
+# Trade-off: addresses are unverified and there is no email-based password recovery until SMTP is set up.
+enable_confirmations = false

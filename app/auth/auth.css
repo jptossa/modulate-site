@@ -1,0 +1,77 @@
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.auth-header {
+  padding-block: var(--space-xl);
+}
+.auth-main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--space-xl) var(--space-xl) var(--space-6xl);
+}
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+.auth-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.field label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.field input {
+  font: inherit;
+  color: var(--ink);
+  min-height: 48px;
+  padding: 10px 14px;
+  background: var(--surface-raised);
+  /* chart-reference is 3:1 on white, the minimum for a control boundary */
+  border: 1.5px solid var(--chart-reference);
+  border-radius: var(--radius-sm);
+}
+.field input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-color: var(--blue);
+}
+.field input[aria-invalid="true"] {
+  border-color: var(--coral-ink);
+}
+.hint {
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.auth-error {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--coral-ink);
+}
+.auth-switch {
+  font-size: 15px;
+  text-align: center;
+}
+@media (max-width: 480px) {
+  .auth-card {
+    padding: var(--space-xl);
+  }
+}
