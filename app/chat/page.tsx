@@ -7,7 +7,6 @@ import { ChatThread } from "@/components/chat/ChatThread";
 import { Button } from "@/components/ds";
 import { Logo } from "@/components/Logo";
 import { getCurrentUser } from "@/lib/auth";
-import "./chat.css";
 
 export const metadata: Metadata = { title: "Chat" };
 
@@ -62,7 +61,7 @@ async function ChatSession() {
         )}
       </header>
       <main className="chat-main">
-        <ChatThread signedIn={!!user} />
+        <ChatThread />
       </main>
     </>
   );

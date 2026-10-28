@@ -2,9 +2,10 @@
 
 import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button, Chip } from "@/components/ds";
 import { ToolResult, type ToolPart } from "./ToolResult";
+import "./chat.css";
 
 const STARTERS = [
   "I'm a teacher and want a change. Where could I go?",
@@ -12,18 +13,25 @@ const STARTERS = [
   "Is demand for software developers rising or cooling?",
 ];
 
-/** useChat surfaces a non-OK response as Error(body text). Our route returns { error }. */
-function errorMessage(error: Error): string {
+/** useChat surfaces a non-OK response as Error(body text). Our route returns { error, code? }. */
+function parseError(error: Error): { message: string; guestLimit: boolean } {
   try {
-    const body = JSON.parse(error.message) as { error?: unknown };
-    if (typeof body.error === "string") return body.error;
+    const body = JSON.parse(error.message) as { error?: unknown; code?: unknown };
+    if (typeof body.error === "string") return { message: body.error, guestLimit: body.code === "guest_limit" };
   } catch {
     // not JSON: fall through
   }
-  return "Something went wrong. Please try again.";
+  return { message: "Something went wrong. Please try again.", guestLimit: false };
 }
 
-export function ChatThread({ signedIn }: { signedIn: boolean }) {
+export interface ChatThreadProps {
+  /** "page" fills the /chat page; "widget" sits in the floating panel and scrolls inside it. */
+  variant?: "page" | "widget";
+}
+
+export function ChatThread({ variant = "page" }: ChatThreadProps) {
+  const inputId = useId();
+  const Heading = variant === "widget" ? "h3" : "h1";
   const { messages, sendMessage, status, stop, error, clearError } = useChat();
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -54,13 +62,13 @@ export function ChatThread({ signedIn }: { signedIn: boolean }) {
   }
 
   return (
-    <div className="chat-thread">
+    <div className={`chat-thread chat-thread-${variant}`}>
       <div className="chat-scroll" role="log" aria-live="polite" aria-label="Conversation">
         {messages.length === 0 ? (
           <div className="chat-empty">
-            <h1 className="type-panel-title" style={{ color: "var(--ink)" }}>
+            <Heading className="type-panel-title" style={{ color: "var(--ink)" }}>
               Where are you today?
-            </h1>
+            </Heading>
             <p>Tell me your current role. I&apos;ll show the routes your skills already connect to, and what the job market says about each one.</p>
             <div className="chat-starters">
               {STARTERS.map((s) => (
@@ -92,25 +100,16 @@ export function ChatThread({ signedIn }: { signedIn: boolean }) {
             Thinking…
           </p>
         ) : null}
-        {error ? (
-          <div className="chat-error" role="alert">
-            <p>{errorMessage(error)}</p>
-            {!signedIn && /guest/i.test(errorMessage(error)) ? (
-              <Link href="/auth/sign-up?next=/chat" className="chat-link">
-                Create an account
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
+        {error ? <ChatError error={error} /> : null}
         <div ref={endRef} />
       </div>
 
       <form className="chat-composer" onSubmit={onSubmit}>
-        <label htmlFor="chat-input" className="sr-only">
+        <label htmlFor={inputId} className="sr-only">
           Message
         </label>
         <textarea
-          id="chat-input"
+          id={inputId}
           rows={2}
           value={input}
           maxLength={2000}
@@ -129,6 +128,20 @@ export function ChatThread({ signedIn }: { signedIn: boolean }) {
           </Button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function ChatError({ error }: { error: Error }) {
+  const { message, guestLimit } = parseError(error);
+  return (
+    <div className="chat-error" role="alert">
+      <p>{message}</p>
+      {guestLimit ? (
+        <Link href="/auth/sign-up?next=/chat" className="chat-link">
+          Create an account
+        </Link>
+      ) : null}
     </div>
   );
 }

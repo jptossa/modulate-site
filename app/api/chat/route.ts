@@ -14,7 +14,8 @@ const MAX_USER_TEXT = 2000;
 
 const Body = z.object({ messages: z.array(z.unknown()).min(1).max(MAX_MESSAGES) });
 
-const json = (body: { error: string }, status: number) => Response.json(body, { status });
+/** `code` lets the client react to a failure without matching on the message text. */
+const json = (body: { error: string; code?: "guest_limit" | "user_limit" }, status: number) => Response.json(body, { status });
 
 /** The newest message must be from the user and short enough; older turns are the client's own history. */
 function lastUserTextTooLong(messages: UIMessage[]): boolean {
@@ -36,11 +37,12 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!(await withinRateLimit(req.headers, user?.id ?? null))) {
     return json(
-      {
-        error: user
-          ? "You've reached today's chat limit. It resets tomorrow."
-          : "You've reached today's guest chat limit. Create a free account to keep going, or come back tomorrow.",
-      },
+      user
+        ? { error: "You've reached today's chat limit. It resets tomorrow.", code: "user_limit" }
+        : {
+            error: "You've reached today's guest chat limit. Create a free account to keep going, or come back tomorrow.",
+            code: "guest_limit",
+          },
       429,
     );
   }
