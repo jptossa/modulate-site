@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Instrument_Sans, Instrument_Serif } from "next/font/google";
+import { Suspense } from "react";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 import "../styles/tokens.css";
 import "../styles/bundle.css";
 import "./globals.css";
@@ -31,7 +33,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* usePathname inside needs Suspense under cacheComponents; the widget has nothing to show until it loads. */}
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
+      </body>
     </html>
   );
 }
