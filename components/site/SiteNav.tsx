@@ -13,7 +13,8 @@ const ACCOUNT_LINKS = [
 /** Header links. Uses usePathname, so render it inside <Suspense> (cacheComponents). */
 export function SiteNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
-  const current = (href: string) => (pathname === href ? "page" : undefined);
+  // Child pages count too, so "Routes" stays marked on /routes/visualize.
+  const current = (href: string) => (pathname === href || pathname.startsWith(`${href}/`) ? "page" : undefined);
   // Send guests back to the page they were on; "/" has nothing to return to, so the default applies.
   const next = pathname !== "/" ? `?next=${encodeURIComponent(pathname)}` : "";
 

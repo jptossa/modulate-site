@@ -79,6 +79,8 @@ export interface TrendSeries {
   label: string;
   values: number[];
   summary?: string;
+  /** Route identity (colour and marker shape). Defaults to the series' position, so set it when a route is left out. */
+  route?: RouteIndex;
 }
 
 export interface TrendChartProps {
@@ -93,6 +95,8 @@ export interface TrendChartProps {
   endLabel?: string;
   /** Prefix for the default text alternative. Use "Illustrative" for example data. */
   kind?: string;
+  /** Draws each line in once when it first appears. Off by default; reduced motion skips it. */
+  animate?: boolean;
 }
 
 const SHAPE_NAMES = ["circle", "square", "diamond"];
@@ -113,6 +117,7 @@ export function TrendChart({
   startLabel = "12 months ago",
   endLabel = "Now",
   kind = "Line chart",
+  animate,
 }: TrendChartProps) {
   const id = `md-tc-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const series = allSeries.slice(0, 3);
@@ -120,18 +125,21 @@ export function TrendChart({
     label ??
     `${kind}. ` +
       series
-        .map((s, i) => `Route ${i + 1}, ${s.label} (${SHAPE_NAMES[i]} markers)${s.summary ? `: ${s.summary}` : ""}.`)
+        .map((s, i) => {
+          const r = s.route ?? i;
+          return `Route ${r + 1}, ${s.label} (${SHAPE_NAMES[r]} markers)${s.summary ? `: ${s.summary}` : ""}.`;
+        })
         .join(" ") +
       (reference ? ` Dashed gray line: ${reference.label}.` : "");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+    <div className={animate ? "md-line-enter" : undefined} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
       <svg viewBox="0 0 800 300" width="100%" role="img" aria-label={alt} style={{ display: "block" }}>
         <defs>
-          {series.map((_, i) => (
+          {series.map((s, i) => (
             <marker
               key={i}
-              id={`${id}-${i}`}
+              id={`${id}-${s.route ?? i}`}
               viewBox="0 0 14 14"
               refX={7}
               refY={7}
@@ -139,7 +147,7 @@ export function TrendChart({
               markerHeight={14}
               markerUnits="userSpaceOnUse"
             >
-              {shapeEl(route(i).shape, 7, 7, 9, route(i).light)}
+              {shapeEl(route(s.route ?? i).shape, 7, 7, 9, route(s.route ?? i).light)}
             </marker>
           ))}
         </defs>
@@ -153,21 +161,25 @@ export function TrendChart({
           />
         ) : null}
         {series.map((s, i) => {
-          const m = `url(#${id}-${i})`;
+          const r = s.route ?? i;
+          const m = `url(#${id}-${r})`;
           return (
             <polyline
               key={i}
               points={points(s.values)}
+              pathLength={1}
+              className="md-line-series"
               fill="none"
               markerStart={m}
               markerMid={m}
               markerEnd={m}
               style={{
-                stroke: route(i).light,
-                strokeWidth: i === selected ? 5 : 2.5,
+                stroke: route(r).light,
+                strokeWidth: r === selected ? 5 : 2.5,
                 strokeLinecap: "round",
                 strokeLinejoin: "round",
                 transition: "stroke-width .35s",
+                ["--i" as string]: r,
               }}
             />
           );
@@ -180,8 +192,8 @@ export function TrendChart({
       {legend ? (
         <div className="md-legend">
           {series.map((s, i) => (
-            <span key={i} className="md-legend-item" style={{ fontWeight: i === selected ? 700 : 500, color: "var(--ink)" }}>
-              <RouteKey index={i} color={route(i).light} />
+            <span key={i} className="md-legend-item" style={{ fontWeight: (s.route ?? i) === selected ? 700 : 500, color: "var(--ink)" }}>
+              <RouteKey index={s.route ?? i} color={route(s.route ?? i).light} />
               {s.label}
             </span>
           ))}
