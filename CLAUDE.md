@@ -70,8 +70,11 @@ Ingest scripts (`scripts/ingest/`) read raw files from `data/` (git-ignored, see
 
 ## Status and what is planned
 
-Built: design system port, `/styleguide`, Supabase schema and auth, the data pipeline above (loaded in the hosted project), and the chat agent (below).
+Built: design system port, `/styleguide`, Supabase schema and auth, the data pipeline above (loaded in the hosted project), the chat agent (below), and the account pages.
 
-Not built yet, in this order:
-1. Account pages: `/routes` (saved-route tracker, status via `SegmentedControl`) and `/profile`.
-2. Landing page (`app/page.tsx` is a placeholder) following the design system's home-page order, with the O*NET attribution line.
+Every page except `/auth/*` sits in the `app/(site)/` route group, whose layout renders `components/site/SiteHeader.tsx`: a static shell (logo) plus `SiteNav`, which shows Sign in / Create an account to guests and Chat / Routes / Profile / Sign out to signed-in users. The session is read only inside the header's `<Suspense>` (after `await connection()`), so the layout stays static. `/auth/*` keeps its own minimal layout.
+
+Account pages live in `app/(site)/(account)/` (its layout is only a container; it never reads the session): `/routes` is the saved-route tracker (`RouteCard` with a `SegmentedControl` status, notes, remove) and `/profile` edits display name, current role and skills. Their server actions sit beside each page and call `requireUser()`; shared route select/mapping is in `lib/routes.ts` (also used by the chat account tools). Like `/chat`, the pages `await connection()` before reading the session. Components are in `components/account/`.
+
+Not built yet:
+1. Landing page (`app/page.tsx` is a placeholder) following the design system's home-page order, with the O*NET attribution line.

@@ -3,12 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { tool } from "ai";
 import { z } from "zod";
 import type { CurrentUser } from "@/lib/auth";
+import { ROUTE_SELECT, ROUTE_STATUSES, toRouteRow, type RouteQueryRow } from "@/lib/routes";
 import type {
   AddSkillOutput,
   ListRoutesOutput,
-  OccupationRef,
   ProfileOutput,
-  RouteStatus,
   SaveRouteOutput,
   SavedRouteRow,
   SetCurrentRoleOutput,
@@ -17,25 +16,8 @@ import type {
 } from "./types";
 
 const SOC = z.string().regex(/^\d{2}-\d{4}$/, "A 6-digit SOC code such as 25-2021").describe("6-digit SOC code from search_occupations");
-const STATUSES = ["considering", "planning", "in_progress", "completed", "dropped"] as const;
 
 const UNIQUE_VIOLATION = "23505";
-
-interface RouteQueryRow {
-  id: string;
-  status: RouteStatus;
-  notes: string | null;
-  origin: { soc_code: string; title: string } | null;
-  destination: { soc_code: string; title: string } | null;
-}
-
-const ROUTE_SELECT =
-  "id, status, notes, origin:occupations!origin_soc(soc_code, title), destination:occupations!destination_soc(soc_code, title)";
-
-function toRouteRow(r: RouteQueryRow): SavedRouteRow {
-  const ref = (o: RouteQueryRow["origin"]): OccupationRef => ({ soc: o?.soc_code ?? "", title: o?.title ?? "Unknown role" });
-  return { id: r.id, origin: ref(r.origin), destination: ref(r.destination), status: r.status, notes: r.notes };
-}
 
 /**
  * Profile and saved-route tools for signed-in users. `db` is the cookie-bound client, so RLS scopes every
@@ -142,7 +124,7 @@ export function accountTools(db: SupabaseClient, user: CurrentUser) {
       description: "Change the status of one of the user's saved routes. Get the route id from list_routes.",
       inputSchema: z.object({
         route_id: z.string().uuid(),
-        status: z.enum(STATUSES),
+        status: z.enum(ROUTE_STATUSES),
       }),
       execute: async ({ route_id, status }): Promise<UpdateRouteStatusOutput | ToolError> => {
         const { data, error } = await db.from("saved_routes").update({ status }).eq("id", route_id).eq("user_id", user.id).select("id");
