@@ -1,0 +1,130 @@
+.lp-hero {
+  padding-block: var(--space-4xl) var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xl);
+}
+.lp-lead {
+  max-width: 580px;
+}
+.lp-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.lp-console {
+  background: var(--surface-inverse);
+  color: var(--on-inverse);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-console);
+  padding: var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+.lp-console-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.lp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-sm);
+}
+.lp-live {
+  font-size: 13px;
+  color: var(--on-inverse-muted);
+}
+
+.lp-section {
+  padding-top: var(--space-5xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+.lp-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.lp-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  align-items: flex-start;
+}
+.lp-split > * {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+.lp-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.lp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.lp-band {
+  margin-top: var(--space-5xl);
+  background: var(--surface-raised);
+  padding-block: var(--space-5xl);
+}
+.lp-band-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+.lp-sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: var(--space-lg);
+}
+.lp-source {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.lp-cta {
+  background: var(--coral);
+  padding-block: var(--space-5xl);
+}
+.lp-cta-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.lp-footer {
+  padding-block: var(--space-3xl);
+}
+
+@media (max-width: 720px) {
+  .lp-hero {
+    padding-block: var(--space-3xl) var(--space-xl);
+  }
+  .lp-console {
+    padding: var(--space-xl);
+  }
+  .lp-section {
+    padding-top: var(--space-4xl);
+  }
+  .lp-band,
+  .lp-cta {
+    padding-block: var(--space-4xl);
+  }
+}

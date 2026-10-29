@@ -76,5 +76,6 @@ Every page except `/auth/*` sits in the `app/(site)/` route group, whose layout 
 
 Account pages live in `app/(site)/(account)/` (its layout is only a container; it never reads the session): `/routes` is the saved-route tracker (`RouteCard` with a `SegmentedControl` status, notes, remove) and `/profile` edits display name, current role and skills. Their server actions sit beside each page and call `requireUser()`; shared route select/mapping is in `lib/routes.ts` (also used by the chat account tools). Like `/chat`, the pages `await connection()` before reading the session. Components are in `components/account/`.
 
-Not built yet:
-1. Landing page (`app/page.tsx` is a placeholder) following the design system's home-page order, with the O*NET attribution line.
+Landing page (`app/(site)/page.tsx`, `landing.css`, `components/landing/`): the design system's home-page order with real data. `lib/landing/bundles.ts` `getLandingOrigins()` (`"use cache"`, `cacheLife("days")`, cookie-free `createPublicClient()`) builds one bundle per curated origin chip (SOC codes in `ORIGINS`): three routes that have at least four years of OEWS history, skill stops, and chart-ready series. `LandingExplorer` (client) switches origins and routes instantly with no requests. Charts are real annual estimates, indexed to the first year, so they are not labelled "Illustrative"; there is no monthly openings or time-to-switch data, so neither is shown. The shared role queries (`adjacentRoutes`, `occupationSeries`, `skillGap`) live in `lib/market/queries.ts` and are also used by the chat tools. The page throws at build if the database is unreachable.
+
+Not built yet: nothing planned.

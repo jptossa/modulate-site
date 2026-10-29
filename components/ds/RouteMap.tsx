@@ -26,6 +26,26 @@ const MAP_PATHS = [
 ];
 const MAP_Y = [70, 210, 350];
 
+/** The map's right margin fits about 36 characters of destination title per line. */
+const MAX_LINE = 36;
+
+/** Splits a long destination title over two lines at the word break that balances them. Never wraps beyond two lines. */
+function wrapTitle(title: string): string[] {
+  if (title.length <= MAX_LINE) return [title];
+  const words = title.split(" ");
+  let best = [title];
+  let bestLongest = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const pair = [words.slice(0, i).join(" "), words.slice(i).join(" ")];
+    const longest = Math.max(pair[0].length, pair[1].length);
+    if (longest < bestLongest) {
+      best = pair;
+      bestLongest = longest;
+    }
+  }
+  return best.map((l) => (l.length > MAX_LINE ? `${l.slice(0, MAX_LINE - 1)}…` : l));
+}
+
 /** The subway-style map. Always sits on surface-inverse inside the console. */
 export function RouteMap({ origin, routes: allRoutes, selected = 0, paused }: RouteMapProps) {
   const reduced = usePrefersReducedMotion();
@@ -75,7 +95,10 @@ export function RouteMap({ origin, routes: allRoutes, selected = 0, paused }: Ro
           {routes.map((r, i) => {
             const y = MAP_Y[i];
             const stopOffset = i === 2 ? -20 : 34;
-            const titleY = i === 0 ? 36 : i === 1 ? 176 : 400;
+            const titleY = i === 0 ? 36 : i === 1 ? 176 : 392;
+            const lines = wrapTitle(r.title);
+            // Two-line titles grow away from the line: upwards for routes 1 and 2, downwards for route 3.
+            const firstY = lines.length > 1 && i !== 2 ? titleY - 22 : titleY;
             return (
               <g key={`t${i}`}>
                 {(r.stops ?? []).slice(0, 2).map((s, j) => (
@@ -92,12 +115,16 @@ export function RouteMap({ origin, routes: allRoutes, selected = 0, paused }: Ro
                 ))}
                 <text
                   x={1040}
-                  y={titleY}
+                  y={firstY}
                   textAnchor="middle"
                   className="md-map-text"
                   style={{ fill: route(i).inverseText, fontSize: "18px", fontWeight: 700, opacity: opacity(i) }}
                 >
-                  {r.title}
+                  {lines.map((line, k) => (
+                    <tspan key={k} x={1040} dy={k ? 22 : 0}>
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
               </g>
             );

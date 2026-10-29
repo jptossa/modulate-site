@@ -24,6 +24,16 @@ export async function createClient() {
   });
 }
 
+/**
+ * Anonymous, cookie-free client for public reference data. Safe inside `"use cache"` scopes, which cannot
+ * read cookies; RLS still applies, so it only sees what a guest sees.
+ */
+export function createPublicClient() {
+  return createSupabaseClient(supabaseUrl(), supabaseAnonKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 /** Bypasses RLS. Only for ingest scripts and server-side bookkeeping such as rate limits. Never pass user input as a table or filter without validating it. */
 export function createServiceClient() {
   return createSupabaseClient(supabaseUrl(), supabaseServiceRoleKey(), {
