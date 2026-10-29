@@ -1,0 +1,35 @@
+.site-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.site-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.site-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md) var(--space-xl);
+  padding-block: var(--space-xl);
+}
+.site-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md) var(--space-xl);
+  margin-left: auto;
+}
+.site-nav a:not(.md-btn) {
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  padding-block: var(--space-xs);
+  border-bottom: 2px solid transparent;
+}
+.site-nav a[aria-current="page"] {
+  border-bottom-color: var(--blue);
+}
