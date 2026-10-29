@@ -2,6 +2,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 import type { Trend } from "@/components/ds";
 import { adjacentRoutes, occupationSeries, skillGap } from "@/lib/market/queries";
+import { MIN_YEARS, commonYears, indexAndScale, shareOfPeak, shortTitle, within } from "@/lib/market/series";
 import { createPublicClient } from "@/lib/supabase/server";
 
 /** Curated origins for the landing page's role chips. SOC codes are checked against the loaded O*NET data. */
@@ -17,7 +18,6 @@ const ORIGINS = [
 
 /** Candidates fetched per origin; the first three with a usable history become the routes. */
 const CANDIDATES = 8;
-const MIN_YEARS = 4;
 
 export interface LandingRoute {
   soc: string;
@@ -47,27 +47,6 @@ export interface LandingOrigin {
   bars: number[][];
 }
 
-type Series = Array<{ year: number; employment: number }>;
-
-/** Drops O*NET's "Except ..." qualifier: "Sales Representatives of Services, Except Advertising, ..." -> "Sales Representatives of Services". */
-const shortTitle = (title: string) => title.split(", Except")[0];
-
-/** Longest run of consecutive years that every series covers. */
-function commonYears(all: Series[]): number[] {
-  const [first, ...rest] = all.map((s) => new Set(s.map((p) => p.year)));
-  const shared = [...first].filter((y) => rest.every((set) => set.has(y))).sort((a, b) => a - b);
-  let best: number[] = [];
-  let run: number[] = [];
-  for (const y of shared) {
-    run = run.length && y === run[run.length - 1] + 1 ? [...run, y] : [y];
-    if (run.length > best.length) best = run;
-  }
-  return best;
-}
-
-const within = (series: Series, years: number[]) => years.map((y) => series.find((p) => p.year === y)!.employment);
-const round = (n: number) => Math.round(n * 10) / 10;
-
 async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: string, label: string): Promise<LandingOrigin | null> {
   const adjacent = await adjacentRoutes(db, soc, CANDIDATES);
   if (!adjacent) return null;
@@ -87,12 +66,7 @@ async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: strin
   const raw = picked.map((c) => within(c.series, years));
   const refRaw = years.every((y) => originSeries.some((p) => p.year === y)) ? within(originSeries, years) : null;
 
-  // Compare shape, not size: index every line to its first year, then scale the whole set into the chart's band.
-  const indexed = [...raw, ...(refRaw ? [refRaw] : [])].map((v) => v.map((x) => (x / v[0]) * 100));
-  const flat = indexed.flat();
-  const lo = Math.min(...flat);
-  const span = Math.max(...flat) - lo || 1;
-  const scaled = indexed.map((v) => v.map((x) => round(12 + ((x - lo) / span) * 76)));
+  const scaled = indexAndScale([...raw, ...(refRaw ? [refRaw] : [])]);
 
   const routes = await Promise.all(
     picked.map(async ({ route }): Promise<LandingRoute> => {
@@ -118,10 +92,7 @@ async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: strin
     years: [years[0], years[years.length - 1]],
     lines: scaled.slice(0, 3),
     reference: refRaw ? scaled[3] : null,
-    bars: raw.map((v) => {
-      const peak = Math.max(...v);
-      return v.map((x) => round((x / peak) * 100));
-    }),
+    bars: raw.map(shareOfPeak),
   };
 }
 

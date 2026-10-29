@@ -1,0 +1,392 @@
+/* Route visualizer. Loaded by /routes/visualize only. */
+
+.vz-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+/* Picker */
+.vz-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+.vz-picker-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.vz-chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.vz-notice {
+  margin: calc(var(--space-lg) * -1) 0 0;
+  min-height: 1.5em;
+  color: var(--coral-ink);
+  font-weight: 600;
+}
+.vz-notice:empty {
+  min-height: 0;
+}
+
+/* Console */
+.vz-console {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-3xl);
+  border-radius: var(--radius-2xl);
+  background: var(--surface-inverse);
+  box-shadow: var(--shadow-console);
+}
+.vz-console-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.vz-console-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.vz-pause {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 44px;
+  padding: 8px 18px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--on-inverse);
+  background: transparent;
+  border: 1.5px solid var(--border-inverse);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.vz-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-sm);
+}
+
+/* Comparison card */
+.vz-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-3xl);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.vz-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+.vz-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.vz-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Side by side */
+.vz-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+.vz-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.vz-metric-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.vz-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 240px) 1fr minmax(96px, auto);
+  align-items: center;
+  gap: var(--space-md);
+}
+.vz-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-weight: 600;
+  color: var(--ink);
+}
+.vz-track {
+  position: relative;
+  height: 20px;
+  background: var(--grid);
+  border-radius: var(--radius-bar);
+  overflow: hidden;
+}
+.vz-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--chart-axis);
+}
+.vz-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-bar);
+  transform-origin: left center;
+  transition:
+    left 0.7s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: vz-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 0.08s);
+}
+.vz-fill-negative {
+  transform-origin: right center;
+}
+.vz-value {
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Skills */
+.vz-skills {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+.vz-rings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xl);
+}
+.vz-ring {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex: 1 1 260px;
+}
+.vz-ring-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.vz-callout {
+  margin: 0;
+  padding: var(--space-md) var(--space-lg);
+  color: var(--blue-ink);
+  background: var(--blue-tint);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+.vz-table-wrap {
+  overflow-x: auto;
+}
+.vz-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.vz-table th,
+.vz-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.vz-table thead th {
+  font-size: 14px;
+  color: var(--ink);
+  vertical-align: bottom;
+}
+.vz-table th[scope="row"],
+.vz-table thead th:first-child {
+  text-align: left;
+}
+.vz-table th[scope="row"] {
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.vz-table td svg {
+  display: block;
+  margin: 0 auto;
+}
+.vz-skill-row {
+  animation: vz-fade-up 0.4s ease-out backwards;
+  animation-delay: calc(var(--r, 0) * 25ms);
+}
+.vz-none {
+  color: var(--ink-subtle);
+}
+
+/* Status track */
+.vz-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+.vz-line {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+.vz-line::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 11px;
+  /* Ends at the centre of the last station's dot: one column width, less the dot's radius. */
+  right: calc((100% - 3 * var(--space-lg)) / 4 - 12px);
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--blue);
+  transform-origin: left center;
+  animation: vz-line-draw 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.vz-station {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-xl);
+}
+.vz-station-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 4px solid var(--blue);
+}
+.vz-station-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+.vz-waiting {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.vz-waiting-item {
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--surface-subtle);
+  border-radius: var(--radius-sm);
+  animation: vz-slide-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(0.4s + var(--n, 0) * 0.08s);
+}
+.vz-dropped {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.vz-dropped-title {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* One-shot entrances. Each only sets a `from` state, so the element settles at its own styles. */
+@keyframes vz-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes vz-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes vz-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+@keyframes vz-line-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .vz-row {
+    grid-template-columns: 1fr auto;
+  }
+  .vz-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+@media (max-width: 720px) {
+  .vz-console,
+  .vz-card {
+    padding: var(--space-xl);
+  }
+  .vz-line {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+  .vz-line::before {
+    top: 12px;
+    bottom: 12px;
+    left: 10px;
+    right: auto;
+    width: 4px;
+    height: auto;
+    transform-origin: center top;
+    animation-name: vz-line-draw-down;
+  }
+  .vz-station {
+    padding: 0 0 0 var(--space-3xl);
+    min-height: 24px;
+  }
+}
+@keyframes vz-line-draw-down {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vz-fill,
+  .vz-skill-row,
+  .vz-waiting-item,
+  .vz-line::before {
+    animation: none;
+  }
+  .vz-fill {
+    transition: none;
+  }
+}

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import "../styles/tokens.css";
 import "../styles/bundle.css";
+import "../components/ds/motion.css";
 import "./globals.css";
 
 const sans = Instrument_Sans({

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Your profile" };
 
 export default function ProfilePage() {
   return (
-    <>
+    <div className="account-narrow">
       <header className="account-head">
         <h1 className="type-heading" style={{ color: "var(--ink)" }}>
           Your profile
@@ -19,7 +19,7 @@ export default function ProfilePage() {
       <Suspense fallback={<p role="status">Loading your profile…</p>}>
         <ProfileSections />
       </Suspense>
-    </>
+    </div>
   );
 }
 

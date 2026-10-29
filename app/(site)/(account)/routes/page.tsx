@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { RouteCard } from "@/components/account/RouteCard";
+import { RoutesSubnav } from "@/components/account/RoutesSubnav";
 import { Button } from "@/components/ds";
 import { requireUser } from "@/lib/auth";
 import { ROUTE_SELECT, toRouteRow, type RouteQueryRow } from "@/lib/routes";
@@ -11,17 +12,18 @@ export const metadata: Metadata = { title: "Your routes" };
 
 export default function RoutesPage() {
   return (
-    <>
+    <div className="account-narrow">
       <header className="account-head">
         <h1 className="type-heading" style={{ color: "var(--ink)" }}>
           Your routes
         </h1>
         <p className="type-lead">Track each career route you are weighing, from first look to the day you arrive.</p>
       </header>
+      <RoutesSubnav current="list" />
       <Suspense fallback={<p role="status">Loading your routes…</p>}>
         <RouteList />
       </Suspense>
-    </>
+    </div>
   );
 }
 

@@ -17,6 +17,9 @@ import {
   TrendPill,
   type RouteIndex,
 } from "@/components/ds";
+import { ComparisonBars } from "@/components/visualize/ComparisonBars";
+import { SkillMatrix } from "@/components/visualize/SkillMatrix";
+import "@/components/visualize/visualize.css";
 
 /* Example data only. Every chart on this page is labelled "Illustrative". */
 const ROUTES = [
@@ -29,6 +32,22 @@ const SERIES = [
   [55, 56, 55, 57, 56, 58, 57, 58, 57, 58, 59, 58],
   [70, 68, 66, 63, 60, 57, 55, 52, 49, 46, 43, 40],
 ];
+
+const COMPARE = ROUTES.map((r, i) => ({
+  index: i as RouteIndex,
+  label: r.title,
+  overlap: r.overlap,
+  projectedChangePct: [12, 3, -4][i],
+  medianPay: [68000, 74000, 61000][i],
+  annualOpenings: [9000, 24000, null][i],
+}));
+const MATRIX = ROUTES.map((r, i) => ({
+  index: i as RouteIndex,
+  label: r.title,
+  overlap: r.overlap,
+  have: [["Explaining complex ideas", "Planning lessons"], ["Explaining complex ideas"], ["Planning lessons"]][i],
+  stops: [r.stops, [r.stops[0], "Compliance"], [r.stops[1], r.stops[0]]][i],
+}));
 
 export function StyleguideDemo() {
   const [selected, setSelected] = useState<RouteIndex>(0);
@@ -148,6 +167,18 @@ export function StyleguideDemo() {
               title={route.title}
               summary={`demand ${route.trend.toLowerCase()}`}
             />
+          </div>
+        </div>
+      </section>
+
+      <section className="sg-section">
+        <h2 className="type-card-title">Comparison bars and skill matrix (Illustrative)</h2>
+        <div className="sg-split">
+          <div className="sg-card">
+            <ComparisonBars routes={COMPARE} />
+          </div>
+          <div className="sg-card">
+            <SkillMatrix routes={MATRIX} />
           </div>
         </div>
       </section>
