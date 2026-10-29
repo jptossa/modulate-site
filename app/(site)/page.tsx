@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Ticker } from "@/components/ds";
+import { GuestSignUp } from "@/components/landing/GuestSignUp";
 import { CtaBand, DataBand, LandingFooter } from "@/components/landing/LandingBands";
 import { LandingExplorer } from "@/components/landing/LandingExplorer";
 import { getLandingOrigins } from "@/lib/landing/bundles";
@@ -22,7 +23,7 @@ export default async function Home() {
   return (
     <main>
       <Ticker items={items} />
-      <LandingExplorer origins={origins} />
+      <LandingExplorer origins={origins} signUp={<GuestSignUp />} />
       <DataBand />
       <CtaBand />
       <LandingFooter />

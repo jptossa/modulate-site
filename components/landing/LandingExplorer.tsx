@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Button,
   Chip,
@@ -19,8 +19,11 @@ import {
 import type { LandingOrigin } from "@/lib/landing/bundles";
 import { formatChange, formatCount, formatPay } from "./format";
 
-/** Hero, route-map console, trend section and detail card. One origin chip drives all of them. */
-export function LandingExplorer({ origins }: { origins: LandingOrigin[] }) {
+/**
+ * Hero, route-map console, trend section and detail card. One origin chip drives all of them.
+ * `signUp` is a server-rendered slot, so this client component never needs the session.
+ */
+export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[]; signUp: ReactNode }) {
   const [originIndex, setOriginIndex] = useState(0);
   const [selected, setSelected] = useState<RouteIndex>(0);
   const origin = origins[originIndex];
@@ -46,9 +49,7 @@ export function LandingExplorer({ origins }: { origins: LandingOrigin[] }) {
           <Button href="/chat" size="lg">
             Build my career map
           </Button>
-          <Button href="/auth/sign-up" variant="secondary" size="lg">
-            Create an account
-          </Button>
+          {signUp}
         </div>
         <div className="lp-chips">
           <span id="lp-chips-label" className="eyebrow">
