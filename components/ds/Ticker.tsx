@@ -5,6 +5,12 @@ import { cx, type Trend } from "./shared";
 import { usePrefersReducedMotion } from "./motion";
 import { TrendPill } from "./indicators";
 
+/**
+ * Scroll time per item, so the speed stays about the same however many items there are (each is roughly
+ * 350px wide, so 5s is about 70px per second). A fixed duration made long lists race.
+ */
+const SECONDS_PER_ITEM = 5;
+
 export interface TickerItem {
   role: string;
   trend: Trend;
@@ -48,7 +54,7 @@ export function Ticker({ items, label }: TickerProps) {
         {paused ? "Play animations" : "Pause animations"}
       </button>
       <div className="md-ticker-window">
-        <div className="md-ticker-track">
+        <div className="md-ticker-track" style={{ animationDuration: `${Math.max(items.length, 1) * SECONDS_PER_ITEM}s` }}>
           {set(false)}
           {set(true)}
         </div>
