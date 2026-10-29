@@ -158,8 +158,8 @@
   transition:
     left 0.7s cubic-bezier(0.2, 0.8, 0.2, 1),
     width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation: vz-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
-  animation-delay: calc(var(--i, 0) * 0.08s);
+  animation: vz-grow 0.9s var(--md-ease-enter) backwards;
+  animation-delay: calc(var(--i, 0) * 0.1s);
 }
 .vz-fill-negative {
   transform-origin: right center;
@@ -235,8 +235,8 @@
   margin: 0 auto;
 }
 .vz-skill-row {
-  animation: vz-fade-up 0.4s ease-out backwards;
-  animation-delay: calc(var(--r, 0) * 25ms);
+  animation: vz-fade-up 0.5s ease-out backwards;
+  animation-delay: calc(var(--r, 0) * 40ms);
 }
 .vz-none {
   color: var(--ink-subtle);
@@ -268,7 +268,7 @@
   border-radius: var(--radius-pill);
   background: var(--blue);
   transform-origin: left center;
-  animation: vz-line-draw 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation: vz-line-draw 1.1s var(--md-ease-enter) backwards;
 }
 .vz-station {
   position: relative;
@@ -304,8 +304,8 @@
   color: var(--ink);
   background: var(--surface-subtle);
   border-radius: var(--radius-sm);
-  animation: vz-slide-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
-  animation-delay: calc(0.4s + var(--n, 0) * 0.08s);
+  animation: vz-slide-in 0.6s var(--md-ease-enter) backwards;
+  animation-delay: calc(0.5s + var(--n, 0) * 0.1s);
 }
 .vz-dropped {
   margin: 0;
@@ -337,6 +337,16 @@
 @keyframes vz-line-draw {
   from {
     transform: scaleX(0);
+  }
+}
+
+/* Hold each entrance until its section scrolls into view (<InView> adds .md-in-view). See components/ds/motion.css. */
+@media (scripting: enabled) {
+  .vz-bars:not(.md-in-view) .vz-fill,
+  .vz-skills:not(.md-in-view) .vz-skill-row,
+  .vz-status:not(.md-in-view) .vz-line::before,
+  .vz-status:not(.md-in-view) .vz-waiting-item {
+    animation-play-state: paused;
   }
 }
 

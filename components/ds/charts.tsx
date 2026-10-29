@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { InView } from "./InView";
 import { RouteKey, route, shapeEl, type RouteIndex } from "./shared";
 
 /* OpeningsChart */
@@ -108,6 +109,11 @@ function points(values: number[]): string {
     .join(" ");
 }
 
+/** The same vertices as `points`, as a path. Series are drawn as paths because Firefox ignores `pathLength` on a polyline, which the draw-in animation relies on. */
+function pathD(values: number[]): string {
+  return `M${points(values).split(" ").join(" L")}`;
+}
+
 export function TrendChart({
   series: allSeries,
   reference,
@@ -133,7 +139,7 @@ export function TrendChart({
       (reference ? ` Dashed gray line: ${reference.label}.` : "");
 
   return (
-    <div className={animate ? "md-line-enter" : undefined} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+    <InView active={!!animate} className={animate ? "md-line-enter" : undefined} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
       <svg viewBox="0 0 800 300" width="100%" role="img" aria-label={alt} style={{ display: "block" }}>
         <defs>
           {series.map((s, i) => (
@@ -164,9 +170,9 @@ export function TrendChart({
           const r = s.route ?? i;
           const m = `url(#${id}-${r})`;
           return (
-            <polyline
+            <path
               key={i}
-              points={points(s.values)}
+              d={pathD(s.values)}
               pathLength={1}
               className="md-line-series"
               fill="none"
@@ -210,6 +216,6 @@ export function TrendChart({
           ) : null}
         </div>
       ) : null}
-    </div>
+    </InView>
   );
 }

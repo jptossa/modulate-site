@@ -1,4 +1,5 @@
 import { Button } from "@/components/ds";
+import { InView } from "@/components/ds/InView";
 import { ROUTE_STATUS_LABELS } from "@/lib/routes";
 import type { OriginGroup } from "@/lib/visualize/data";
 
@@ -15,7 +16,7 @@ export function StatusTrack({ groups }: { groups: OriginGroup[] }) {
   let order = 0;
 
   return (
-    <div className="vz-status">
+    <InView className="vz-status">
       <ol className="vz-line">
         {STATIONS.map((status) => {
           const here = all.filter((r) => r.status === status);
@@ -51,6 +52,6 @@ export function StatusTrack({ groups }: { groups: OriginGroup[] }) {
           Update route statuses
         </Button>
       </div>
-    </div>
+    </InView>
   );
 }

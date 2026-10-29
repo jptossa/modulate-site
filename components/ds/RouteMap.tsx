@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { InView } from "./InView";
 import { cx, route, type RouteIndex } from "./shared";
 import { usePrefersReducedMotion } from "./motion";
 
@@ -75,7 +76,7 @@ export function RouteMap({ origin, routes: allRoutes, selected = 0, paused, entr
     ` Route ${selected + 1} is selected.`;
 
   return (
-    <div className={cx("md-on-inverse", still && "md-map-paused", entrance && "md-map-enter")}>
+    <InView active={!!entrance} className={cx("md-on-inverse", still && "md-map-paused", entrance && "md-map-enter")}>
       <svg className="md-map" viewBox="0 0 1200 420" role="img" aria-label={description}>
         {routes.map((_, i) => (
           <path
@@ -171,6 +172,6 @@ export function RouteMap({ origin, routes: allRoutes, selected = 0, paused, entr
           </div>
         ))}
       </div>
-    </div>
+    </InView>
   );
 }

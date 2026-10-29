@@ -1,4 +1,5 @@
 import { overlapLevel, type RouteIndex } from "@/components/ds";
+import { InView } from "@/components/ds/InView";
 import { RouteKey, route } from "@/components/ds/shared";
 import { formatChange, formatCount, formatPay, NOT_REPORTED } from "@/components/landing/format";
 
@@ -57,7 +58,7 @@ function bar(value: number, all: number[], ceiling?: number) {
  */
 export function ComparisonBars({ routes }: { routes: ComparisonRoute[] }) {
   return (
-    <div className="vz-bars">
+    <InView className="vz-bars">
       {METRICS.map((m) => {
         const values = routes.map(m.value).filter((v): v is number => v !== null);
         return (
@@ -94,6 +95,6 @@ export function ComparisonBars({ routes }: { routes: ComparisonRoute[] }) {
           </section>
         );
       })}
-    </div>
+    </InView>
   );
 }
