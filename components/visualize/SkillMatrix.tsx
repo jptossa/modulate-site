@@ -1,4 +1,5 @@
 import { OverlapRing, overlapLevel, type RouteIndex } from "@/components/ds";
+import { InView } from "@/components/ds/InView";
 import { route, type Shape } from "@/components/ds/shared";
 
 export interface SkillMatrixRoute {
@@ -47,7 +48,7 @@ export function SkillMatrix({ routes }: { routes: SkillMatrixRoute[] }) {
   const shared = skills.filter((s) => s.stopCount > 1).map((s) => s.skill);
 
   return (
-    <div className="vz-skills">
+    <InView className="vz-skills">
       <ul className="vz-rings">
         {routes.map((r) => (
           <li key={r.index} className="vz-ring">
@@ -133,6 +134,6 @@ export function SkillMatrix({ routes }: { routes: SkillMatrixRoute[] }) {
           Not in that route&apos;s top skills
         </li>
       </ul>
-    </div>
+    </InView>
   );
 }
