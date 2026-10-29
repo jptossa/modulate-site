@@ -17,6 +17,7 @@ import {
   type RouteIndex,
 } from "@/components/ds";
 import type { LandingOrigin } from "@/lib/landing/bundles";
+import { SHARE_OF_PEAK_TICKS, yearRange } from "@/lib/market/series";
 import { formatChange, formatCount, formatPay } from "./format";
 
 /**
@@ -30,6 +31,7 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
   const route = origin.routes[selected];
   const [firstYear, lastYear] = origin.years;
   const change = formatChange(route.projectedChangePct);
+  const yearLabels = yearRange(firstYear, lastYear);
 
   const pickOrigin = (i: number) => {
     setOriginIndex(i);
@@ -122,13 +124,18 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
             <TrendChart
               kind="Line chart of annual employment estimates, indexed to the first year"
               selected={selected}
-              startLabel={String(firstYear)}
-              endLabel={String(lastYear)}
-              reference={origin.reference ? { label: `Your current role: ${origin.label}`, values: origin.reference } : undefined}
+              yAxis={{ title: `Jobs, change since ${firstYear}`, ticks: origin.ticks }}
+              xLabels={yearLabels}
+              reference={
+                origin.reference
+                  ? { label: `Your current role: ${origin.label}`, values: origin.reference, points: origin.referenceChanges ?? undefined }
+                  : undefined
+              }
               series={origin.routes.map((r, i) => ({
                 label: r.title,
                 values: origin.lines[i],
                 summary: `demand ${r.trend.toLowerCase()}`,
+                points: origin.changes[i],
               }))}
             />
             <span className="type-meta" style={{ color: "var(--ink-subtle)" }}>
@@ -176,8 +183,8 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
               values={origin.bars[selected]}
               route={selected}
               highlight={2}
-              startLabel={String(firstYear)}
-              endLabel={String(lastYear)}
+              yAxis={{ title: "Jobs, share of the highest year", ticks: SHARE_OF_PEAK_TICKS }}
+              xLabels={yearLabels}
             />
             <span className="type-meta" style={{ color: "var(--ink-subtle)" }}>
               Annual estimates, shown against the highest year. Source: BLS OEWS.

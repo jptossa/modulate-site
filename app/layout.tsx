@@ -5,6 +5,7 @@ import { ChatWidget } from "@/components/chat/ChatWidget";
 import "../styles/tokens.css";
 import "../styles/bundle.css";
 import "../components/ds/motion.css";
+import "../components/ds/axes.css";
 import "./globals.css";
 
 const sans = Instrument_Sans({

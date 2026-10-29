@@ -15,6 +15,8 @@ export interface ComparisonRoute {
 interface Metric {
   id: string;
   title: string;
+  /** One line saying what the measure is and where its bars start. */
+  hint: string;
   value: (r: ComparisonRoute) => number | null;
   format: (r: ComparisonRoute) => string;
   /** A measure with a natural ceiling is drawn against it instead of against the largest route. */
@@ -25,6 +27,7 @@ const METRICS: Metric[] = [
   {
     id: "overlap",
     title: "Skill overlap",
+    hint: "How closely your skills match each destination. Longer means closer.",
     ceiling: 1,
     value: (r) => r.overlap,
     format: (r) => (r.overlap === null ? NOT_REPORTED : overlapLevel(r.overlap)),
@@ -32,11 +35,24 @@ const METRICS: Metric[] = [
   {
     id: "change",
     title: "Projected change, 2025 to 2035",
+    hint: "Expected change in jobs. The line marks 0%: bars to its right are growth, bars to its left are decline.",
     value: (r) => r.projectedChangePct,
     format: (r) => formatChange(r.projectedChangePct) ?? NOT_REPORTED,
   },
-  { id: "pay", title: "Median pay per year", value: (r) => r.medianPay, format: (r) => formatPay(r.medianPay) },
-  { id: "openings", title: "Annual openings", value: (r) => r.annualOpenings, format: (r) => formatCount(r.annualOpenings) },
+  {
+    id: "pay",
+    title: "Median pay per year",
+    hint: "Typical yearly pay. Bars start at $0.",
+    value: (r) => r.medianPay,
+    format: (r) => formatPay(r.medianPay),
+  },
+  {
+    id: "openings",
+    title: "Annual openings",
+    hint: "Average job openings per year, 2025 to 2035. Bars start at 0.",
+    value: (r) => r.annualOpenings,
+    format: (r) => formatCount(r.annualOpenings),
+  },
 ];
 
 /**
@@ -66,6 +82,9 @@ export function ComparisonBars({ routes }: { routes: ComparisonRoute[] }) {
             <h3 id={`vz-m-${m.id}`} className="type-card-title" style={{ color: "var(--ink)" }}>
               {m.title}
             </h3>
+            <p className="type-meta" style={{ color: "var(--ink-subtle)" }}>
+              {m.hint}
+            </p>
             <ul className="vz-metric-rows">
               {routes.map((r, i) => {
                 const v = m.value(r);
