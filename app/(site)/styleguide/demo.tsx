@@ -18,6 +18,7 @@ import {
   type RouteIndex,
 } from "@/components/ds";
 import { ComparisonBars } from "@/components/visualize/ComparisonBars";
+import { SHARE_OF_PEAK_TICKS } from "@/lib/market/series";
 import { SkillMatrix } from "@/components/visualize/SkillMatrix";
 import "@/components/visualize/visualize.css";
 
@@ -31,6 +32,13 @@ const SERIES = [
   [30, 34, 38, 42, 47, 52, 58, 62, 69, 75, 82, 88],
   [55, 56, 55, 57, 56, 58, 57, 58, 57, 58, 59, 58],
   [70, 68, 66, 63, 60, 57, 55, 52, 49, 46, 43, 40],
+];
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const LEVEL_TICKS = [
+  { at: 0, label: "0" },
+  { at: 50, label: "50" },
+  { at: 100, label: "100" },
 ];
 
 const COMPARE = ROUTES.map((r, i) => ({
@@ -120,8 +128,15 @@ export function StyleguideDemo() {
             <TrendChart
               kind="Illustrative line chart"
               selected={selected}
-              reference={{ label: "Your current role", values: SERIES[1].map((v) => v - 8) }}
-              series={ROUTES.map((r, i) => ({ label: r.title, values: SERIES[i], summary: `demand ${r.trend.toLowerCase()}` }))}
+              yAxis={{ title: "Relative level, 0 to 100 (Illustrative)", ticks: LEVEL_TICKS }}
+              xLabels={MONTHS}
+              reference={{ label: "Your current role", values: SERIES[1].map((v) => v - 8), points: SERIES[1].map((v) => String(v - 8)) }}
+              series={ROUTES.map((r, i) => ({
+                label: r.title,
+                values: SERIES[i],
+                summary: `demand ${r.trend.toLowerCase()}`,
+                points: SERIES[i].map(String),
+              }))}
             />
             <span className="type-meta" style={{ color: "var(--ink-subtle)" }}>
               Illustrative · Source: [DATA SOURCES]
@@ -166,6 +181,8 @@ export function StyleguideDemo() {
               route={selected}
               title={route.title}
               summary={`demand ${route.trend.toLowerCase()}`}
+              yAxis={{ title: "Share of the highest month (Illustrative)", ticks: SHARE_OF_PEAK_TICKS }}
+              xLabels={MONTHS}
             />
           </div>
         </div>

@@ -2,7 +2,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 import type { Trend } from "@/components/ds";
 import { adjacentRoutes, occupationSeries, skillGap } from "@/lib/market/queries";
-import { MIN_YEARS, commonYears, indexAndScale, shareOfPeak, shortTitle, within } from "@/lib/market/series";
+import { MIN_YEARS, commonYears, indexAndScale, shareOfPeak, shortTitle, within, type AxisTick } from "@/lib/market/series";
 import { createPublicClient } from "@/lib/supabase/server";
 
 /** Curated origins for the landing page's role chips. SOC codes are checked against the loaded O*NET data. */
@@ -43,6 +43,11 @@ export interface LandingOrigin {
   lines: number[][];
   /** The origin's own history on the same scale, when it covers the window. */
   reference: number[] | null;
+  /** Y-axis ticks for `lines`: round change-since-first-year values and where they sit on the plot scale. */
+  ticks: AxisTick[];
+  /** Each route's points as short text ("+12%") for the chart readout, and the origin's when it has a reference line. */
+  changes: string[][];
+  referenceChanges: string[] | null;
   /** Employment per route as a share of its own peak (0..100), for the bar chart. */
   bars: number[][];
 }
@@ -66,7 +71,7 @@ async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: strin
   const raw = picked.map((c) => within(c.series, years));
   const refRaw = years.every((y) => originSeries.some((p) => p.year === y)) ? within(originSeries, years) : null;
 
-  const scaled = indexAndScale([...raw, ...(refRaw ? [refRaw] : [])]);
+  const chart = indexAndScale([...raw, ...(refRaw ? [refRaw] : [])]);
 
   const routes = await Promise.all(
     picked.map(async ({ route }): Promise<LandingRoute> => {
@@ -90,8 +95,11 @@ async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: strin
     label,
     routes,
     years: [years[0], years[years.length - 1]],
-    lines: scaled.slice(0, 3),
-    reference: refRaw ? scaled[3] : null,
+    lines: chart.lines.slice(0, 3),
+    reference: refRaw ? chart.lines[3] : null,
+    ticks: chart.ticks,
+    changes: chart.changes.slice(0, 3),
+    referenceChanges: refRaw ? chart.changes[3] : null,
     bars: raw.map(shareOfPeak),
   };
 }

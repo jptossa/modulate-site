@@ -1,0 +1,126 @@
+/*
+ * Axis labels and the year readout for the design-system charts (components/ds/charts.tsx).
+ * Everything here is opt-in: a chart without `yAxis` / `xLabels` renders as before.
+ */
+
+:root {
+  /* Width of the column of y tick labels beside a plot. */
+  --md-ycol: 48px;
+}
+
+/* A short title above the plot, with the picked year on the right while the readout is in use. */
+.md-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 1.4em;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.md-chart-head-year {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.md-plot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.md-plot-y {
+  grid-template-columns: var(--md-ycol) minmax(0, 1fr);
+}
+
+/* Tick labels sit in a column as tall as the plot; each is placed by percentage down it. */
+.md-ylabels {
+  position: relative;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.md-ylabel {
+  position: absolute;
+  right: 10px;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.md-ylabel-base {
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.md-plot-main {
+  position: relative;
+  /* Horizontal scrubbing reads the year; vertical swipes still scroll the page. */
+  touch-action: pan-y;
+  border-radius: var(--radius-sm);
+}
+.md-plot-main[tabindex] {
+  cursor: crosshair;
+}
+
+.md-line-zero {
+  stroke: var(--chart-axis);
+  stroke-width: 1.5;
+}
+.md-guide {
+  stroke: var(--chart-reference);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* Year labels under the points. Line chart: placed by percentage. Bar chart: a row that mirrors the bars' flex gap. */
+.md-xticks {
+  position: relative;
+  height: 20px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.md-xtick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.md-xtick-active {
+  font-weight: 700;
+  color: var(--ink);
+}
+.md-bar-ticks {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.md-bar-ticks span {
+  flex: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.md-xticks-y {
+  margin-left: var(--md-ycol);
+}
+
+.md-legend-value {
+  margin-left: 2px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* On narrow screens show every other interior year (the first and last stay) and every other y label. */
+@media (max-width: 560px) {
+  :root {
+    --md-ycol: 44px;
+  }
+  .md-ylabel-alt,
+  .md-xtick:not(:first-child):not(:last-child):nth-child(even),
+  .md-bar-ticks span:not(:first-child):not(:last-child):nth-child(even) {
+    visibility: hidden;
+  }
+}

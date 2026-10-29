@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RouteMap, RouteOption, SkillList, StatTile, TrendChart } from "@/components/ds";
+import { SHARE_OF_PEAK_TICKS } from "@/lib/market/series";
 import type { RouteIndex } from "@/components/ds";
 import {
   isToolError,
@@ -163,9 +164,15 @@ function MarketCard({ data }: { data: MarketTrendOutput }) {
       )}
       {years.length >= 3 && peak > 0 ? (
         <TrendChart
-          series={[{ label: data.title, values: years.map((y) => (y.employment / peak) * 100) }]}
-          startLabel={String(years[0].year)}
-          endLabel={String(years[years.length - 1].year)}
+          series={[
+            {
+              label: data.title,
+              values: years.map((y) => (y.employment / peak) * 100),
+              points: years.map((y) => `${Math.round((y.employment / peak) * 100)}% of peak`),
+            },
+          ]}
+          yAxis={{ title: "Jobs, share of the highest year", ticks: SHARE_OF_PEAK_TICKS }}
+          xLabels={years.map((y) => String(y.year))}
           label={`Annual employment estimates for ${data.title}, ${years[0].year} to ${years[years.length - 1].year}, as a share of the highest year.`}
           kind="Annual estimates"
           legend={false}

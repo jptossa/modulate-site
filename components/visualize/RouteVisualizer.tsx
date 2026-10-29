@@ -4,7 +4,7 @@ import { useState } from "react";
 import { RouteMap, SegmentedControl, StatTile, TrendChart, overlapLevel, type RouteIndex } from "@/components/ds";
 import { route } from "@/components/ds/shared";
 import { formatChange, formatCount, formatPay, NOT_REPORTED } from "@/components/landing/format";
-import { MIN_YEARS, commonYears, indexAndScale, within } from "@/lib/market/series";
+import { MIN_YEARS, commonYears, indexAndScale, within, yearRange } from "@/lib/market/series";
 import type { OriginGroup, RouteVisual } from "@/lib/visualize/data";
 import { ComparisonBars } from "./ComparisonBars";
 import { MAX_COMPARED, RoutePicker } from "./RoutePicker";
@@ -76,8 +76,16 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
     const scaled = indexAndScale([...raw, ...(originCovers ? [within(group.originSeries, years)] : [])]);
     return {
       years: [years[0], years[years.length - 1]] as const,
-      series: eligible.map(({ r, i }, k) => ({ label: r.destination.title, values: scaled[k], summary: demandWord(r), route: i as RouteIndex })),
-      reference: originCovers ? scaled[eligible.length] : null,
+      yearLabels: yearRange(years[0], years[years.length - 1]),
+      ticks: scaled.ticks,
+      series: eligible.map(({ r, i }, k) => ({
+        label: r.destination.title,
+        values: scaled.lines[k],
+        summary: demandWord(r),
+        route: i as RouteIndex,
+        points: scaled.changes[k],
+      })),
+      reference: originCovers ? { values: scaled.lines[eligible.length], points: scaled.changes[eligible.length] } : null,
       left: routes.filter((r) => r.series.length < MIN_YEARS),
     };
   })();
@@ -188,10 +196,10 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
                   animate
                   kind="Line chart of annual employment estimates, indexed to the first year"
                   selected={focusIndex}
-                  startLabel={String(chart.years[0])}
-                  endLabel={String(chart.years[1])}
+                  yAxis={{ title: `Jobs, change since ${chart.years[0]}`, ticks: chart.ticks }}
+                  xLabels={chart.yearLabels}
                   series={chart.series}
-                  reference={chart.reference ? { label: `You are here: ${group.origin.title}`, values: chart.reference } : undefined}
+                  reference={chart.reference ? { label: `You are here: ${group.origin.title}`, ...chart.reference } : undefined}
                 />
                 {chart.left.length ? (
                   <p className="type-meta" style={{ color: "var(--ink-subtle)" }}>
