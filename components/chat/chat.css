@@ -227,3 +227,24 @@
     padding: var(--space-md);
   }
 }
+
+.chat-route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.chat-text-button {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--space-xs);
+  border: 0;
+  background: transparent;
+  color: var(--ink-subtle);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.chat-text-button:hover {
+  color: var(--ink);
+}

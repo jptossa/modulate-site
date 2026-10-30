@@ -174,3 +174,27 @@
     padding-block: var(--space-4xl);
   }
 }
+
+.lp-route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.lp-text-button {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--space-xs);
+  border: 0;
+  background: transparent;
+  color: var(--ink-subtle);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.lp-text-button:hover {
+  color: var(--ink);
+}
+.lp-more-action {
+  margin-top: var(--space-xs);
+}

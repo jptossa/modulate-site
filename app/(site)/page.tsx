@@ -17,7 +17,7 @@ export default async function Home() {
   // Every destination across the chips, once each, so the ticker shows the whole range.
   const seen = new Set<string>();
   const items = origins
-    .flatMap((o) => o.routes)
+    .flatMap((o) => o.routes.filter((r) => o.defaultCharted.includes(r.soc)))
     .filter((r) => !seen.has(r.soc) && seen.add(r.soc))
     .map((r) => ({ role: r.title, trend: r.trend }));
 
