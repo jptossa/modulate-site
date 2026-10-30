@@ -4,6 +4,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { Trend } from "@/components/ds";
 import { areaMarket, areaRef, searchAreas } from "@/lib/market/area-queries";
+import { comparePay } from "@/lib/market/compare";
 import { adjacentRoutes, occupationSeries, occupationTitle, skillGap } from "@/lib/market/queries";
 import type {
   AdjacentRolesOutput,
@@ -102,7 +103,14 @@ export function marketTools(db: SupabaseClient, defaultArea: AreaRef | null = nu
           if (!result) return notFound(origin_soc);
           if (!area) return result;
           const local = await areaMarket(db, area.code, result.routes.map((r) => r.soc));
-          return { ...result, area, routes: result.routes.map((r) => ({ ...r, local: local.get(r.soc) ?? null })) };
+          return {
+            ...result,
+            area,
+            routes: result.routes.map((r) => {
+              const l = local.get(r.soc);
+              return { ...r, local: l ? { ...l, payVsNational: comparePay(l.medianPay, l.medianPayTopCoded, r.medianPay) } : null };
+            }),
+          };
         } catch {
           return { error: "Could not compute adjacent roles." };
         }
@@ -111,7 +119,7 @@ export function marketTools(db: SupabaseClient, defaultArea: AreaRef | null = nu
 
     market_trend: tool({
       description:
-        "Job-market facts for one occupation: BLS projected change, median pay, openings, trend (Rising / Steady / Cooling), and annual employment estimates. Fields can be null when BLS reports the occupation only as part of a group; say so rather than guessing. When the user has a saved place (or you pass area_code) it also returns local jobs, local median pay and concentration versus the U.S. for that place; the other figures stay national, so say which is which. A null local block means BLS publishes no estimate there: say so and do not substitute national numbers. If medianPayTopCoded is true the local median is at least that amount (BLS caps it), so say \"at least\" or \"or more\".",
+        "Job-market facts for one occupation: BLS projected change, median pay, openings, trend (Rising / Steady / Cooling), and annual employment estimates. Fields can be null when BLS reports the occupation only as part of a group; say so rather than guessing. When the user has a saved place (or you pass area_code) it also returns local jobs, local median pay and concentration versus the U.S. for that place; the other figures stay national, so say which is which. A null local block means BLS publishes no estimate there: say so and do not substitute national numbers. If medianPayTopCoded is true the local median is at least that amount (BLS caps it), so say \"at least\" or \"or more\". payVsNational compares local and national median pay from the same survey; use it instead of working out the gap yourself. If its atLeast is true the local median is capped, so the real gap is at least that big and may be much larger; never call it about the same.",
       inputSchema: z.object({
         soc: SOC,
         area_code: AREA_CODE.optional(),
@@ -148,7 +156,9 @@ export function marketTools(db: SupabaseClient, defaultArea: AreaRef | null = nu
               }
             : null,
           series,
-          ...(area ? { area, local: local ?? null } : {}),
+          ...(area
+            ? { area, local: local ? { ...local, payVsNational: comparePay(local.medianPay, local.medianPayTopCoded, m?.median_pay ?? null) } : null }
+            : {}),
         };
       },
     }),

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RouteMap, SegmentedControl, StatTile, TrendChart, overlapLevel, type RouteIndex } from "@/components/ds";
 import { route } from "@/components/ds/shared";
 import { formatChange, formatCount, formatLocalPay, formatPay, NOT_REPORTED } from "@/components/landing/format";
+import { comparePay, describePayComparison } from "@/lib/market/compare";
 import { MIN_YEARS, commonYears, indexAndScale, within, yearRange } from "@/lib/market/series";
 import type { AreaRef } from "@/lib/chat/types";
 import type { OriginGroup, RouteVisual } from "@/lib/visualize/data";
@@ -106,6 +107,7 @@ export function RouteVisualizer({ groups, area }: { groups: OriginGroup[]; area:
   const change = formatChange(focused.projectedChangePct);
   const local = area && scope === "local" ? area : null;
   const localFacts = local ? focused.local : null;
+  const vsNational = localFacts ? comparePay(localFacts.medianPay, localFacts.medianPayTopCoded, focused.medianPay) : null;
 
   return (
     <>
@@ -186,9 +188,15 @@ export function RouteVisualizer({ groups, area }: { groups: OriginGroup[]; area:
             <>
               <StatTile
                 tone="inverse"
-                label="Median pay"
+                label={`Median pay in ${local.name}`}
                 value={localFacts?.medianPay != null ? formatLocalPay(localFacts.medianPay, localFacts.medianPayTopCoded) : NO_LOCAL_ESTIMATE}
-                note={localFacts?.medianPay != null ? `Per year in ${local.name}, May ${localFacts.asOfYear}` : `BLS publishes no pay figure for this role in ${local.name}`}
+                note={
+                  localFacts?.medianPay == null
+                    ? `BLS publishes no pay figure for this role in ${local.name}`
+                    : vsNational
+                      ? `${describePayComparison(vsNational)} (${formatPay(focused.medianPay)}), May ${localFacts.asOfYear}`
+                      : `Per year, May ${localFacts.asOfYear}`
+                }
               />
               <StatTile
                 tone="inverse"

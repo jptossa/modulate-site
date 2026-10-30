@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RouteMap, RouteOption, SkillList, StatTile, TrendChart } from "@/components/ds";
+import { describePayComparison } from "@/lib/market/compare";
 import { SHARE_OF_PEAK_TICKS } from "@/lib/market/series";
 import type { RouteIndex } from "@/components/ds";
 import {
@@ -181,7 +182,13 @@ function MarketCard({ data }: { data: MarketTrendOutput }) {
               <StatTile
                 label={`Median pay in ${data.area.name}`}
                 value={data.local.medianPay !== null ? `${usd.format(data.local.medianPay)}${data.local.medianPayTopCoded ? " or more" : ""}` : "No local estimate"}
-                note={data.local.medianPay !== null ? `Per year, May ${data.local.asOfYear}` : undefined}
+                note={
+                  data.local.medianPay === null
+                    ? undefined
+                    : data.local.payVsNational
+                      ? `${describePayComparison(data.local.payVsNational)}, May ${data.local.asOfYear}`
+                      : `Per year, May ${data.local.asOfYear}`
+                }
               />
               <StatTile
                 label={`Jobs in ${data.area.name}`}

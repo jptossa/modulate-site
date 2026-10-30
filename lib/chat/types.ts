@@ -1,4 +1,5 @@
 import type { Trend } from "@/components/ds";
+import type { PayComparison } from "@/lib/market/compare";
 
 /**
  * Shapes the chat tools return. Shared by the server tools and the client cards so the two stay in step.
@@ -37,6 +38,8 @@ export interface LocalMarket {
   /** Local share of employment divided by the national share: 1.4 means 40% more concentrated than the U.S. */
   locationQuotient: number | null;
   asOfYear: number;
+  /** Local median pay against the national median (same May 2025 survey). Null when either figure is missing. */
+  payVsNational?: PayComparison | null;
 }
 
 export interface SearchOccupationsOutput {
