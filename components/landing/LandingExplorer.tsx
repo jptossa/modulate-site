@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Button,
   Chip,
@@ -16,28 +16,66 @@ import {
   overlapLevel,
   type RouteIndex,
 } from "@/components/ds";
-import type { LandingOrigin } from "@/lib/landing/bundles";
+import { MAX_CHARTED, canChart, chartData } from "@/lib/landing/chart-data";
+import type { LandingOrigin, LandingRoute } from "@/lib/landing/types";
 import { SHARE_OF_PEAK_TICKS, yearRange } from "@/lib/market/series";
 import { formatChange, formatCount, formatPay } from "./format";
 
+const COUNT_WORD = ["One", "Two", "Three"];
+
 /**
  * Hero, route-map console, trend section and detail card. One origin chip drives all of them.
- * `signUp` is a server-rendered slot, so this client component never needs the session.
+ * `signUp` and `place` are server-rendered slots, so this client component never needs the session.
+ * The map and charts draw up to three routes (the design system has three route identities); the person
+ * chooses which, and every other route stays in the "more routes" list.
  */
 export function LandingExplorer({ origins, signUp, place }: { origins: LandingOrigin[]; signUp: ReactNode; place: ReactNode }) {
   const [originIndex, setOriginIndex] = useState(0);
-  const [selected, setSelected] = useState<RouteIndex>(0);
+  // The routes drawn on the map and charts, in route-identity order. Starts as the origin's default three.
+  const [charted, setCharted] = useState<string[]>(origins[0].defaultCharted);
+  const [picked, setPicked] = useState(0);
   const [showMore, setShowMore] = useState(false);
+  // Bumped after the charted set changes, so focus can move to the selected route (the button that was used may be gone).
+  const [focusTick, setFocusTick] = useState(0);
+  const chartedRef = useRef<HTMLDivElement>(null);
+
   const origin = origins[originIndex];
-  const route = origin.routes[selected];
-  const [firstYear, lastYear] = origin.years;
+  const data = useMemo(() => chartData(origin, charted), [origin, charted]);
+  const routes = data.routes;
+  const selected = Math.min(picked, routes.length - 1) as RouteIndex;
+  const route = routes[selected];
+  const [firstYear, lastYear] = data.years;
   const change = formatChange(route.projectedChangePct);
   const yearLabels = yearRange(firstYear, lastYear);
+  const listed = origin.routes.filter((r) => !charted.includes(r.soc));
+
+  useEffect(() => {
+    if (focusTick > 0) chartedRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
+  }, [focusTick]);
 
   const pickOrigin = (i: number) => {
     setOriginIndex(i);
-    setSelected(0);
+    setCharted(origins[i].defaultCharted);
+    setPicked(0);
     setShowMore(false);
+  };
+
+  /** Puts a listed route on the chart: added while there is room, otherwise in place of the selected route. */
+  const addRoute = (soc: string) => {
+    if (charted.length < MAX_CHARTED) {
+      setCharted([...charted, soc]);
+      setPicked(charted.length);
+    } else {
+      setCharted(charted.map((s, i) => (i === selected ? soc : s)));
+    }
+    setFocusTick((t) => t + 1);
+  };
+
+  const removeRoute = (index: number) => {
+    setCharted(charted.filter((_, i) => i !== index));
+    // Keep the same route selected when it moves up; if it was the one removed, the next route takes its place.
+    setPicked(index < selected ? selected - 1 : Math.min(selected, charted.length - 2));
+    setFocusTick((t) => t + 1);
   };
 
   return (
@@ -77,21 +115,17 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
               {`Routes from ${origin.label}`}
             </span>
             <h2 id="lp-console-title" className="type-panel-title" style={{ color: "var(--on-inverse)" }}>
-              Three routes from where you are
+              {`${COUNT_WORD[routes.length - 1]} ${routes.length === 1 ? "route" : "routes"} from where you are`}
             </h2>
           </div>
           <SegmentedControl
             tone="inverse"
             label="Pick a route"
             value={String(selected)}
-            onChange={(id) => setSelected(Number(id) as RouteIndex)}
-            options={origin.routes.map((r, i) => ({ id: String(i), label: r.title }))}
+            onChange={(id) => setPicked(Number(id))}
+            options={routes.map((r, i) => ({ id: String(i), label: r.title }))}
           />
-          <RouteMap
-            origin={origin.label}
-            routes={origin.routes.map((r) => ({ title: r.title, stops: r.stops }))}
-            selected={selected}
-          />
+          <RouteMap origin={origin.label} routes={routes.map((r) => ({ title: r.title, stops: r.stops }))} selected={selected} />
           <div className="lp-stats">
             <StatTile
               tone="inverse"
@@ -110,7 +144,7 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
             />
           </div>
           <p className="lp-live" role="status" aria-live="polite">
-            {`Routes from ${origin.label}. Route ${selected + 1} selected: ${route.title}, demand ${route.trend.toLowerCase()}`}
+            {`Routes from ${origin.label}. ${routes.length} charted. Route ${selected + 1} selected: ${route.title}, demand ${route.trend.toLowerCase()}`}
           </p>
         </div>
       </section>
@@ -127,18 +161,18 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
             <TrendChart
               kind="Line chart of annual employment estimates, indexed to the first year"
               selected={selected}
-              yAxis={{ title: `Jobs, change since ${firstYear}`, ticks: origin.ticks }}
+              yAxis={{ title: `Jobs, change since ${firstYear}`, ticks: data.ticks }}
               xLabels={yearLabels}
               reference={
-                origin.reference
-                  ? { label: `Your current role: ${origin.label}`, values: origin.reference, points: origin.referenceChanges ?? undefined }
+                data.reference
+                  ? { label: `Your current role: ${origin.label}`, values: data.reference, points: data.referenceChanges ?? undefined }
                   : undefined
               }
-              series={origin.routes.map((r, i) => ({
+              series={routes.map((r, i) => ({
                 label: r.title,
-                values: origin.lines[i],
+                values: data.lines[i],
                 summary: `demand ${r.trend.toLowerCase()}`,
-                points: origin.changes[i],
+                points: data.changes[i],
               }))}
             />
             <span className="type-meta" style={{ color: "var(--ink-subtle)" }}>
@@ -146,20 +180,26 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
             </span>
           </div>
           <div className="lp-stack">
-            <div role="group" aria-label="Pick a route" className="lp-stack">
-              {origin.routes.map((r, i) => (
-                <RouteOption
-                  key={r.soc}
-                  index={i as RouteIndex}
-                  title={r.title}
-                  trend={r.trend}
-                  overlap={r.overlap}
-                  selected={selected === i}
-                  onClick={() => setSelected(i as RouteIndex)}
-                />
+            <div ref={chartedRef} role="group" aria-label="Pick a route" className="lp-stack">
+              {routes.map((r, i) => (
+                <div key={r.soc} className="lp-route">
+                  <RouteOption
+                    index={i as RouteIndex}
+                    title={r.title}
+                    trend={r.trend}
+                    overlap={r.overlap}
+                    selected={selected === i}
+                    onClick={() => setPicked(i)}
+                  />
+                  {routes.length > 1 ? (
+                    <button type="button" className="lp-text-button" onClick={() => removeRoute(i)}>
+                      Remove<span className="sr-only">{` ${r.title}`}</span> from chart
+                    </button>
+                  ) : null}
+                </div>
               ))}
             </div>
-            {origin.more.length > 0 ? (
+            {listed.length > 0 ? (
               <>
                 <div>
                   <Button variant="secondary" aria-expanded={showMore} aria-controls="lp-more" onClick={() => setShowMore((v) => !v)}>
@@ -167,7 +207,14 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
                   </Button>
                 </div>
                 <div id="lp-more" hidden={!showMore}>
-                  <MoreRoutes origin={origin} />
+                  <MoreRoutes
+                    origin={origin}
+                    listed={listed}
+                    charted={charted}
+                    slot={selected}
+                    replacing={charted.length >= MAX_CHARTED ? route.title : null}
+                    onChart={addRoute}
+                  />
                 </div>
               </>
             ) : null}
@@ -197,7 +244,7 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
             <OpeningsChart
               kind="Bar chart"
               label={`Bar chart of annual employment estimates for ${route.title}, ${firstYear} to ${lastYear}. Each bar is a share of the highest year.`}
-              values={origin.bars[selected]}
+              values={data.bars[selected]}
               route={selected}
               highlight={2}
               yAxis={{ title: "Jobs, share of the highest year", ticks: SHARE_OF_PEAK_TICKS }}
@@ -213,16 +260,32 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
   );
 }
 
-/** Routes past the three charted ones: facts only, with no map line or route colour (the design system has three). */
-function MoreRoutes({ origin }: { origin: LandingOrigin }) {
+/** Routes not on the chart: their facts, plus a button to chart one when it can be (it needs enough annual history in common). */
+function MoreRoutes({
+  origin,
+  listed,
+  charted,
+  slot,
+  replacing,
+  onChart,
+}: {
+  origin: LandingOrigin;
+  listed: LandingRoute[];
+  charted: string[];
+  slot: number;
+  /** Title of the route a new one would replace, when the chart is full. */
+  replacing: string | null;
+  onChart: (soc: string) => void;
+}) {
   return (
     <div className="lp-more">
       <h3 className="type-card-title" style={{ color: "var(--ink)" }}>
         {`More routes from ${origin.label}`}
       </h3>
       <ul className="lp-more-list">
-        {origin.more.map((r) => {
+        {listed.map((r) => {
           const change = formatChange(r.projectedChangePct);
+          const fit = canChart(origin, charted, r.soc, slot);
           return (
             <li key={r.soc} className="lp-more-item">
               <span className="lp-more-title">{r.title}</span>
@@ -237,7 +300,24 @@ function MoreRoutes({ origin }: { origin: LandingOrigin }) {
                   .join(" · ")}
               </span>
               {r.stops.length > 0 ? <span className="lp-more-meta">{`Stops to pick up: ${r.stops.join(", ")}`}</span> : null}
-              {r.hasHistory ? null : <span className="lp-more-meta">No chart: too few annual estimates for this role</span>}
+              {fit.ok ? (
+                <div className="lp-more-action">
+                  <Button variant="secondary" onClick={() => onChart(r.soc)}>
+                    {replacing ? (
+                      <>
+                        Chart<span className="sr-only">{` ${r.title}`}</span>
+                        {` instead of ${replacing}`}
+                      </>
+                    ) : (
+                      <>
+                        Add<span className="sr-only">{` ${r.title}`}</span> to chart
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <span className="lp-more-meta">{fit.reason}</span>
+              )}
             </li>
           );
         })}

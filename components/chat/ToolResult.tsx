@@ -107,10 +107,12 @@ export function ToolResult({ part }: { part: ToolPart }) {
 const CHARTED = 3;
 
 function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
-  // `selected` indexes the whole list and drives the facts line; `mapSelected` only ever names one of the three drawn routes.
-  const [selected, setSelected] = useState(0);
-  const [mapSelected, setMapSelected] = useState<RouteIndex>(0);
-  const [more, setMore] = useState<AdjacentRoute[]>(data.routes.slice(CHARTED));
+  const [all, setAll] = useState<AdjacentRoute[]>(data.routes);
+  // The routes on the map, in route-identity order. The person can swap a listed route into the selected slot.
+  const [chartedSocs, setChartedSocs] = useState<string[]>(() => data.routes.slice(0, CHARTED).map((r) => r.soc));
+  // `selectedSoc` drives the facts line (any route); `slot` is the map line that is highlighted (a charted route).
+  const [selectedSoc, setSelectedSoc] = useState(chartedSocs[0]);
+  const [slot, setSlot] = useState(0);
   const [phase, setPhase] = useState<"idle" | "loading" | "loaded" | "failed">("idle");
   const [pending, startTransition] = useTransition();
   const area = data.area;
@@ -118,13 +120,28 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
   if (data.routes.length === 0) {
     return <p className="chat-tool-note">No adjacent roles outside {data.origin.title} came back from the data.</p>;
   }
-  const charted = data.routes.slice(0, CHARTED);
-  const all = [...charted, ...more];
-  const picked = all[selected] ?? all[0];
+  const charted = chartedSocs.map((soc) => all.find((r) => r.soc === soc)).filter((r): r is AdjacentRoute => r !== undefined);
+  const listed = all.filter((r) => !chartedSocs.includes(r.soc));
+  const mapSlot = Math.min(slot, charted.length - 1) as RouteIndex;
+  const picked = all.find((r) => r.soc === selectedSoc) ?? charted[0];
+  const full = charted.length >= CHARTED;
 
-  const choose = (i: number) => {
-    setSelected(i);
-    if (i < CHARTED) setMapSelected(i as RouteIndex);
+  const choose = (soc: string) => {
+    setSelectedSoc(soc);
+    const i = chartedSocs.indexOf(soc);
+    if (i >= 0) setSlot(i);
+  };
+
+  /** Puts a listed route on the map: added while there is room, otherwise in place of the highlighted route. */
+  const putOnMap = (soc: string) => {
+    if (full) {
+      setChartedSocs(chartedSocs.map((s, i) => (i === mapSlot ? soc : s)));
+      setSlot(mapSlot);
+    } else {
+      setChartedSocs([...chartedSocs, soc]);
+      setSlot(chartedSocs.length);
+    }
+    setSelectedSoc(soc);
   };
 
   const loadMore = () => {
@@ -135,7 +152,8 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
         setPhase("failed");
         return;
       }
-      setMore(result.routes.slice(CHARTED));
+      // Keep the routes already on the card, so nothing charted moves, and add the rest.
+      setAll([...data.routes, ...result.routes.filter((r) => !data.routes.some((d) => d.soc === r.soc))]);
       setPhase("loaded");
     });
   };
@@ -143,7 +161,7 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
   return (
     <section className="chat-card" aria-label={`Routes from ${data.origin.title}`}>
       <div className="chat-console md-on-inverse">
-        <RouteMap origin={data.origin.title} routes={charted.map((r) => ({ title: r.title }))} selected={mapSelected} />
+        <RouteMap origin={data.origin.title} routes={charted.map((r) => ({ title: r.title }))} selected={mapSlot} />
       </div>
       <div className="chat-routes">
         {charted.map((r, i) => (
@@ -155,11 +173,11 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
                 trend={r.trend}
                 overlap={r.overlap}
                 levelLabel={r.overlapLevel}
-                selected={i === selected}
-                onClick={() => choose(i)}
+                selected={r.soc === picked.soc}
+                onClick={() => choose(r.soc)}
               />
             ) : (
-              <button type="button" className="md-route" aria-pressed={i === selected} onClick={() => choose(i)}>
+              <button type="button" className="md-route" aria-pressed={r.soc === picked.soc} onClick={() => choose(r.soc)}>
                 <span className="md-route-head">{r.title}</span>
                 <span className="md-route-meta">{`${r.overlapLevel} overlap · trend not reported`}</span>
               </button>
@@ -167,15 +185,20 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
           </div>
         ))}
       </div>
-      {more.length > 0 ? (
+      {listed.length > 0 ? (
         <div className="chat-more" role="group" aria-label="More routes">
           <span className="type-label">More routes</span>
           <div className="chat-routes">
-            {more.map((r, j) => (
-              <button key={r.soc} type="button" className="md-route" aria-pressed={CHARTED + j === selected} onClick={() => choose(CHARTED + j)}>
-                <span className="md-route-head">{r.title}</span>
-                <span className="md-route-meta">{`${r.overlapLevel} overlap · ${r.trend ? `demand ${r.trend.toLowerCase()}` : "trend not reported"}`}</span>
-              </button>
+            {listed.map((r) => (
+              <div key={r.soc} className="chat-route">
+                <button type="button" className="md-route" aria-pressed={r.soc === picked.soc} onClick={() => choose(r.soc)}>
+                  <span className="md-route-head">{r.title}</span>
+                  <span className="md-route-meta">{`${r.overlapLevel} overlap · ${r.trend ? `demand ${r.trend.toLowerCase()}` : "trend not reported"}`}</span>
+                </button>
+                <button type="button" className="chat-text-button" onClick={() => putOnMap(r.soc)}>
+                  Show<span className="sr-only">{` ${r.title}`}</span> on map{full ? ` instead of ${charted[mapSlot].title}` : ""}
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -186,7 +209,7 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
             {pending ? "Loading routes…" : "Show more routes"}
           </Button>
         </div>
-      ) : more.length === 0 ? (
+      ) : listed.length === 0 ? (
         <p className="chat-tool-note">No more routes came back from the data.</p>
       ) : null}
       {phase === "failed" ? (
