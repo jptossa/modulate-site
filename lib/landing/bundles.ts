@@ -16,8 +16,10 @@ const ORIGINS = [
   { soc: "15-1252", label: "Software developer" },
 ] as const;
 
-/** Candidates fetched per origin; the first three with a usable history become the routes. */
-const CANDIDATES = 8;
+/** Candidates fetched per origin; the first three with a usable history become the charted routes, the next few the "more routes" list. */
+const CANDIDATES = 10;
+/** Most extra routes listed under "Show more routes". */
+const MORE_ROUTES = 5;
 
 export interface LandingRoute {
   soc: string;
@@ -33,10 +35,27 @@ export interface LandingRoute {
   stops: string[];
 }
 
+/** A route past the three charted ones: facts only, no chart line or route colour. */
+export interface LandingMoreRoute {
+  soc: string;
+  title: string;
+  overlap: number;
+  trend: Trend;
+  projectedChangePct: number | null;
+  medianPay: number | null;
+  annualOpenings: number | null;
+  have: string[];
+  stops: string[];
+  /** False when BLS has too few annual estimates to chart this role. */
+  hasHistory: boolean;
+}
+
 export interface LandingOrigin {
   soc: string;
   label: string;
   routes: LandingRoute[];
+  /** Further routes, best first, shown on request. */
+  more: LandingMoreRoute[];
   /** First and last year of the shared OEWS window. */
   years: [number, number];
   /** Employment per route, indexed to the first year and scaled into 0..100 for the line chart. */
@@ -64,6 +83,9 @@ async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: strin
   const picked = withSeries.filter((c) => c.series.length >= MIN_YEARS).slice(0, 3);
   if (picked.length < 3) return null;
 
+  const pickedSocs = new Set(picked.map((c) => c.route.soc));
+  const extras = withSeries.filter((c) => !pickedSocs.has(c.route.soc)).slice(0, MORE_ROUTES);
+
   const originSeries = await occupationSeries(db, soc);
   const years = commonYears(picked.map((c) => c.series));
   if (years.length < MIN_YEARS) return null;
@@ -90,10 +112,29 @@ async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: strin
     }),
   );
 
+  const more = await Promise.all(
+    extras.map(async ({ route, series }): Promise<LandingMoreRoute> => {
+      const gap = await skillGap(db, soc, route.soc);
+      return {
+        soc: route.soc,
+        title: shortTitle(route.title),
+        overlap: route.overlap,
+        trend: route.trend as Trend,
+        projectedChangePct: route.projectedChangePct,
+        medianPay: route.medianPay,
+        annualOpenings: route.annualOpenings,
+        have: gap.have.slice(0, 4),
+        stops: gap.stops.slice(0, 2),
+        hasHistory: series.length >= MIN_YEARS,
+      };
+    }),
+  );
+
   return {
     soc,
     label,
     routes,
+    more,
     years: [years[0], years[years.length - 1]],
     lines: chart.lines.slice(0, 3),
     reference: refRaw ? chart.lines[3] : null,

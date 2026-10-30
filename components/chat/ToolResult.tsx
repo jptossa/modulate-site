@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { RouteMap, RouteOption, SkillList, StatTile, TrendChart } from "@/components/ds";
+import { useState, useTransition } from "react";
+import { Button, RouteMap, RouteOption, SkillList, StatTile, TrendChart } from "@/components/ds";
+import { setArea } from "@/lib/area-actions";
+import { moreAdjacentRoutes } from "@/lib/chat/more-routes";
 import { describePayComparison } from "@/lib/market/compare";
 import { SHARE_OF_PEAK_TICKS } from "@/lib/market/series";
 import type { RouteIndex } from "@/components/ds";
 import {
   isToolError,
+  type AdjacentRoute,
+  type AreaRef,
   type AdjacentRolesOutput,
   type ListRoutesOutput,
   type MarketTrendOutput,
   type RouteStatus,
   type SaveRouteOutput,
+  type SearchAreasOutput,
   type SavedRouteRow,
   type SkillGapOutput,
   type UpdateRouteStatusOutput,
@@ -80,6 +85,8 @@ export function ToolResult({ part }: { part: ToolPart }) {
   switch (name) {
     case "adjacent_roles":
       return <AdjacentCard data={part.output as AdjacentRolesOutput} />;
+    case "search_areas":
+      return <PlacesCard data={part.output as SearchAreasOutput} />;
     case "skill_gap":
       return <SkillGapCard data={part.output as SkillGapOutput} />;
     case "market_trend":
@@ -91,24 +98,55 @@ export function ToolResult({ part }: { part: ToolPart }) {
     case "update_route_status":
       return <SavedRouteCard route={(part.output as UpdateRouteStatusOutput).route} note="Updated" />;
     default:
-      // search_occupations, search_areas and the profile tools have no card; the reply text carries the result.
+      // search_occupations and the profile tools have no card; the reply text carries the result.
       return null;
   }
 }
 
+/** Routes with a map line and a colour; the design system has three identities. Anything past them is listed without one. */
+const CHARTED = 3;
+
 function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
-  const [selected, setSelected] = useState<RouteIndex>(0);
+  // `selected` indexes the whole list and drives the facts line; `mapSelected` only ever names one of the three drawn routes.
+  const [selected, setSelected] = useState(0);
+  const [mapSelected, setMapSelected] = useState<RouteIndex>(0);
+  const [more, setMore] = useState<AdjacentRoute[]>(data.routes.slice(CHARTED));
+  const [phase, setPhase] = useState<"idle" | "loading" | "loaded" | "failed">("idle");
+  const [pending, startTransition] = useTransition();
+  const area = data.area;
+
   if (data.routes.length === 0) {
     return <p className="chat-tool-note">No adjacent roles outside {data.origin.title} came back from the data.</p>;
   }
-  const picked = data.routes[selected] ?? data.routes[0];
+  const charted = data.routes.slice(0, CHARTED);
+  const all = [...charted, ...more];
+  const picked = all[selected] ?? all[0];
+
+  const choose = (i: number) => {
+    setSelected(i);
+    if (i < CHARTED) setMapSelected(i as RouteIndex);
+  };
+
+  const loadMore = () => {
+    setPhase("loading");
+    startTransition(async () => {
+      const result = await moreAdjacentRoutes(data.origin.soc, area?.code ?? null);
+      if (isToolError(result)) {
+        setPhase("failed");
+        return;
+      }
+      setMore(result.routes.slice(CHARTED));
+      setPhase("loaded");
+    });
+  };
+
   return (
     <section className="chat-card" aria-label={`Routes from ${data.origin.title}`}>
       <div className="chat-console md-on-inverse">
-        <RouteMap origin={data.origin.title} routes={data.routes.map((r) => ({ title: r.title }))} selected={selected} />
+        <RouteMap origin={data.origin.title} routes={charted.map((r) => ({ title: r.title }))} selected={mapSelected} />
       </div>
       <div className="chat-routes">
-        {data.routes.map((r, i) => (
+        {charted.map((r, i) => (
           <div key={r.soc} className="chat-route">
             {r.trend ? (
               <RouteOption
@@ -118,10 +156,10 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
                 overlap={r.overlap}
                 levelLabel={r.overlapLevel}
                 selected={i === selected}
-                onClick={() => setSelected(i as RouteIndex)}
+                onClick={() => choose(i)}
               />
             ) : (
-              <button type="button" className="md-route" aria-pressed={i === selected} onClick={() => setSelected(i as RouteIndex)}>
+              <button type="button" className="md-route" aria-pressed={i === selected} onClick={() => choose(i)}>
                 <span className="md-route-head">{r.title}</span>
                 <span className="md-route-meta">{`${r.overlapLevel} overlap · trend not reported`}</span>
               </button>
@@ -129,18 +167,93 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
           </div>
         ))}
       </div>
+      {more.length > 0 ? (
+        <div className="chat-more" role="group" aria-label="More routes">
+          <span className="type-label">More routes</span>
+          <div className="chat-routes">
+            {more.map((r, j) => (
+              <button key={r.soc} type="button" className="md-route" aria-pressed={CHARTED + j === selected} onClick={() => choose(CHARTED + j)}>
+                <span className="md-route-head">{r.title}</span>
+                <span className="md-route-meta">{`${r.overlapLevel} overlap · ${r.trend ? `demand ${r.trend.toLowerCase()}` : "trend not reported"}`}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {phase !== "loaded" ? (
+        <div>
+          <Button variant="secondary" onClick={loadMore} disabled={pending}>
+            {pending ? "Loading routes…" : "Show more routes"}
+          </Button>
+        </div>
+      ) : more.length === 0 ? (
+        <p className="chat-tool-note">No more routes came back from the data.</p>
+      ) : null}
+      {phase === "failed" ? (
+        <p className="chat-tool-note" role="alert">
+          Could not load more routes. You can try again.
+        </p>
+      ) : null}
       <p className="chat-facts" aria-live="polite">
         {[
           picked.medianPay !== null && `Median pay ${usd.format(picked.medianPay)}`,
           picked.projectedChangePct !== null && `${signedPct(picked.projectedChangePct)} projected employment change`,
           picked.annualOpenings !== null && `${int.format(picked.annualOpenings)} openings a year`,
-          data.area && picked.local?.medianPay != null && `${usd.format(picked.local.medianPay)}${picked.local.medianPayTopCoded ? " or more" : ""} median pay in ${data.area.name}`,
-          data.area && picked.local?.employment != null && `${int.format(picked.local.employment)} jobs in ${data.area.name}`,
-          data.area && !picked.local && `No local estimate for ${data.area.name}`,
+          area && picked.local?.medianPay != null && `${usd.format(picked.local.medianPay)}${picked.local.medianPayTopCoded ? " or more" : ""} median pay in ${area.name}`,
+          area && picked.local?.employment != null && `${int.format(picked.local.employment)} jobs in ${area.name}`,
+          area && !picked.local && `No local estimate for ${area.name}`,
         ]
           .filter(Boolean)
           .join(" · ") || "No pay or openings figures reported for this role."}
       </p>
+    </section>
+  );
+}
+
+const PLACE_KIND: Record<AreaRef["kind"], string> = {
+  national: "national",
+  state: "state",
+  metro: "metro area",
+  nonmetro: "nonmetropolitan area",
+};
+
+/** Matching places as one-click buttons, so a guest can save a place without opening the picker. */
+function PlacesCard({ data }: { data: SearchAreasOutput }) {
+  const [saved, setSaved] = useState<AreaRef | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (data.results.length === 0) return null;
+
+  const choose = (area: AreaRef) => {
+    setError(null);
+    startTransition(async () => {
+      const result = await setArea(area.code);
+      if (result.error) setError(result.error);
+      else setSaved(area);
+    });
+  };
+
+  return (
+    <section className="chat-card" aria-label="Pick your place">
+      <h3 className="chat-card-title">Pick your place</h3>
+      {saved ? (
+        <p className="chat-tool-note" role="status">{`Saved ${saved.name}. Local figures will use it from your next message.`}</p>
+      ) : (
+        <>
+          <div className="md-row">
+            {data.results.slice(0, 5).map((a) => (
+              <Button key={a.code} variant="secondary" onClick={() => choose(a)} disabled={pending}>
+                {`Use ${a.name} (${PLACE_KIND[a.kind]})`}
+              </Button>
+            ))}
+          </div>
+          {error ? (
+            <p className="chat-tool-note" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }

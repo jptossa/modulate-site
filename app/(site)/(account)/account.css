@@ -123,6 +123,11 @@
   flex-direction: column;
   gap: var(--space-xs);
 }
+.account-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
 .account-results {
   list-style: none;
   margin: 0;

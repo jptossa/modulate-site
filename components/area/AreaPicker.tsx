@@ -3,9 +3,9 @@
 // The field, hint and account-* styles live with the account pages; the picker brings them wherever it is used.
 import "@/app/auth/auth.css";
 import "@/app/(site)/(account)/account.css";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAction } from "@/components/account/useAction";
-import { Button } from "@/components/ds";
+import { Button, Chip } from "@/components/ds";
 import type { AreaRef } from "@/lib/chat/types";
 import { searchAreaOptions, setArea } from "@/lib/area-actions";
 
@@ -16,20 +16,54 @@ const KIND_LABEL: Record<AreaRef["kind"], string> = {
   nonmetro: "Nonmetropolitan area",
 };
 
-/** Search-and-pick for the place local market data is shown for. Works for guests (cookie) and signed-in users (profile). */
-export function AreaPicker({ current, id = "area" }: { current: AreaRef | null; id?: string }) {
+/** Wait this long after the last keystroke before searching. */
+const SEARCH_DELAY_MS = 250;
+
+/** "Dallas-Fort Worth-Arlington, TX" -> "Dallas": BLS names metros after several cities, which is too long for a chip. */
+const shortName = (name: string) => name.split(/[-,]/)[0].trim();
+
+/**
+ * Search-and-pick for the place local market data is shown for. Works for guests (cookie) and signed-in users (profile).
+ * Results appear as you type; `suggestions` are one-click shortcuts shown until a place is set.
+ */
+export function AreaPicker({ current, id = "area", suggestions = [] }: { current: AreaRef | null; id?: string; suggestions?: AreaRef[] }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AreaRef[] | null>(null);
   const { error, setError, pending, startTransition } = useAction();
+  // Only the newest search may write results, so a slow early response never replaces a later one.
+  const latest = useRef(0);
 
-  const search = (e: FormEvent) => {
-    e.preventDefault();
+  const run = (q: string) => {
+    const ticket = ++latest.current;
     setError(null);
     startTransition(async () => {
-      const result = await searchAreaOptions(query);
+      const result = await searchAreaOptions(q);
+      if (ticket !== latest.current) return;
       if (result.error) setError(result.error);
       setResults(result.error ? null : result.results);
     });
+  };
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    const timer = setTimeout(() => run(q), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+    // `run` only reads refs and stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  const onType = (value: string) => {
+    setQuery(value);
+    if (value.trim().length < 2) {
+      latest.current++;
+      setResults(null);
+    }
+  };
+
+  const search = (e: FormEvent) => {
+    e.preventDefault();
+    if (query.trim().length >= 2) run(query.trim());
   };
 
   const choose = (code: string | null) => {
@@ -40,6 +74,7 @@ export function AreaPicker({ current, id = "area" }: { current: AreaRef | null; 
         setError(result.error);
         return;
       }
+      latest.current++;
       setResults(null);
       setQuery("");
     });
@@ -52,6 +87,21 @@ export function AreaPicker({ current, id = "area" }: { current: AreaRef | null; 
         <strong>{current ? current.name : "Not set"}</strong>
       </p>
 
+      {!current && suggestions.length > 0 ? (
+        <div className="account-suggestions">
+          <span id={`${id}-popular`} className="type-label">
+            Popular places
+          </span>
+          <div className="md-row" role="group" aria-labelledby={`${id}-popular`}>
+            {suggestions.map((s) => (
+              <Chip key={s.code} onClick={() => choose(s.code)}>
+                {shortName(s.name)}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <form onSubmit={search} className="account-inline" noValidate>
         <div className="field">
           <label htmlFor={`${id}-search`}>Search for a state or metro area</label>
@@ -60,7 +110,7 @@ export function AreaPicker({ current, id = "area" }: { current: AreaRef | null; 
             type="search"
             autoComplete="off"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => onType(e.target.value)}
             aria-describedby={`${id}-search-hint`}
           />
           <span id={`${id}-search-hint`} className="hint">

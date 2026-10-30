@@ -3,6 +3,7 @@ import { Ticker } from "@/components/ds";
 import { GuestSignUp } from "@/components/landing/GuestSignUp";
 import { CtaBand, DataBand, LandingFooter } from "@/components/landing/LandingBands";
 import { LandingExplorer } from "@/components/landing/LandingExplorer";
+import { LandingPlace } from "@/components/landing/LandingPlace";
 import { getLandingOrigins } from "@/lib/landing/bundles";
 import "./landing.css";
 
@@ -23,7 +24,7 @@ export default async function Home() {
   return (
     <main>
       <Ticker items={items} />
-      <LandingExplorer origins={origins} signUp={<GuestSignUp />} />
+      <LandingExplorer origins={origins} signUp={<GuestSignUp />} place={<LandingPlace />} />
       <DataBand />
       <CtaBand />
       <LandingFooter />

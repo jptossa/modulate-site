@@ -24,9 +24,10 @@ import { formatChange, formatCount, formatPay } from "./format";
  * Hero, route-map console, trend section and detail card. One origin chip drives all of them.
  * `signUp` is a server-rendered slot, so this client component never needs the session.
  */
-export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[]; signUp: ReactNode }) {
+export function LandingExplorer({ origins, signUp, place }: { origins: LandingOrigin[]; signUp: ReactNode; place: ReactNode }) {
   const [originIndex, setOriginIndex] = useState(0);
   const [selected, setSelected] = useState<RouteIndex>(0);
+  const [showMore, setShowMore] = useState(false);
   const origin = origins[originIndex];
   const route = origin.routes[selected];
   const [firstYear, lastYear] = origin.years;
@@ -36,6 +37,7 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
   const pickOrigin = (i: number) => {
     setOriginIndex(i);
     setSelected(0);
+    setShowMore(false);
   };
 
   return (
@@ -65,6 +67,7 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
             ))}
           </div>
         </div>
+        {place}
       </section>
 
       <section className="container" aria-labelledby="lp-console-title">
@@ -142,18 +145,32 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
               {`Annual estimates, ${firstYear} to ${lastYear}. Each line is indexed to its first year, so it shows direction, not size. BLS changed its method in 2021 and 2022, which can affect year-to-year moves. Source: BLS OEWS.`}
             </span>
           </div>
-          <div role="group" aria-label="Pick a route" className="lp-stack">
-            {origin.routes.map((r, i) => (
-              <RouteOption
-                key={r.soc}
-                index={i as RouteIndex}
-                title={r.title}
-                trend={r.trend}
-                overlap={r.overlap}
-                selected={selected === i}
-                onClick={() => setSelected(i as RouteIndex)}
-              />
-            ))}
+          <div className="lp-stack">
+            <div role="group" aria-label="Pick a route" className="lp-stack">
+              {origin.routes.map((r, i) => (
+                <RouteOption
+                  key={r.soc}
+                  index={i as RouteIndex}
+                  title={r.title}
+                  trend={r.trend}
+                  overlap={r.overlap}
+                  selected={selected === i}
+                  onClick={() => setSelected(i as RouteIndex)}
+                />
+              ))}
+            </div>
+            {origin.more.length > 0 ? (
+              <>
+                <div>
+                  <Button variant="secondary" aria-expanded={showMore} aria-controls="lp-more" onClick={() => setShowMore((v) => !v)}>
+                    {showMore ? "Hide more routes" : "Show more routes"}
+                  </Button>
+                </div>
+                <div id="lp-more" hidden={!showMore}>
+                  <MoreRoutes origin={origin} />
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
@@ -193,5 +210,38 @@ export function LandingExplorer({ origins, signUp }: { origins: LandingOrigin[];
         </div>
       </section>
     </>
+  );
+}
+
+/** Routes past the three charted ones: facts only, with no map line or route colour (the design system has three). */
+function MoreRoutes({ origin }: { origin: LandingOrigin }) {
+  return (
+    <div className="lp-more">
+      <h3 className="type-card-title" style={{ color: "var(--ink)" }}>
+        {`More routes from ${origin.label}`}
+      </h3>
+      <ul className="lp-more-list">
+        {origin.more.map((r) => {
+          const change = formatChange(r.projectedChangePct);
+          return (
+            <li key={r.soc} className="lp-more-item">
+              <span className="lp-more-title">{r.title}</span>
+              <span className="lp-more-meta">
+                {[
+                  `${overlapLevel(r.overlap)} overlap`,
+                  `Demand ${r.trend.toLowerCase()}`,
+                  r.medianPay !== null && `Median pay ${formatPay(r.medianPay)}`,
+                  change && `Projected change ${change}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+              {r.stops.length > 0 ? <span className="lp-more-meta">{`Stops to pick up: ${r.stops.join(", ")}`}</span> : null}
+              {r.hasHistory ? null : <span className="lp-more-meta">No chart: too few annual estimates for this role</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

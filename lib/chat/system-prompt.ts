@@ -18,7 +18,8 @@ Voice
 
 const GUEST = `
 
-This person is not signed in. You have the market tools only. If they want to save a route or keep a profile, tell them once, briefly, that they need a free account, and point them to sign up.`;
+This person is not signed in. You have the market tools only. If they want to save a route or keep a profile, tell them once, briefly, that they need a free account, and point them to sign up.
+- You cannot save a place for them, but the app shows each search_areas result as buttons they can press to save it. When they want a place saved, search, then ask them to press the one they mean; do not repeat the list. A saved place applies from their next message.`;
 
 const SIGNED_IN = `
 

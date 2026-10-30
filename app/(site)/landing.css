@@ -14,6 +14,52 @@
   gap: var(--space-sm);
 }
 
+.lp-place {
+  max-width: 520px;
+}
+.lp-place summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 600;
+}
+.lp-place[open] summary {
+  margin-bottom: var(--space-sm);
+}
+
+.lp-more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.lp-more-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.lp-more-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.lp-more-title {
+  color: var(--ink);
+  font-weight: 600;
+}
+.lp-more-meta {
+  color: var(--ink-subtle);
+  font-size: 14px;
+}
+
 .lp-console {
   background: var(--surface-inverse);
   color: var(--on-inverse);

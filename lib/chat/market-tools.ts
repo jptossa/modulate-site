@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { tool } from "ai";
 import { z } from "zod";
 import type { Trend } from "@/components/ds";
-import { areaMarket, areaRef, searchAreas } from "@/lib/market/area-queries";
+import { areaMarket, areaRef, searchAreas, withLocalFigures } from "@/lib/market/area-queries";
 import { comparePay } from "@/lib/market/compare";
 import { adjacentRoutes, occupationSeries, occupationTitle, skillGap } from "@/lib/market/queries";
 import type {
@@ -102,15 +102,7 @@ export function marketTools(db: SupabaseClient, defaultArea: AreaRef | null = nu
           const result = await adjacentRoutes(db, origin_soc, limit);
           if (!result) return notFound(origin_soc);
           if (!area) return result;
-          const local = await areaMarket(db, area.code, result.routes.map((r) => r.soc));
-          return {
-            ...result,
-            area,
-            routes: result.routes.map((r) => {
-              const l = local.get(r.soc);
-              return { ...r, local: l ? { ...l, payVsNational: comparePay(l.medianPay, l.medianPayTopCoded, r.medianPay) } : null };
-            }),
-          };
+          return await withLocalFigures(db, result, area);
         } catch {
           return { error: "Could not compute adjacent roles." };
         }
