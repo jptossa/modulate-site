@@ -194,7 +194,11 @@ export function RouteVisualizer({ groups, area }: { groups: OriginGroup[]; area:
                 tone="inverse"
                 label={`Jobs in ${local.name}`}
                 value={localFacts?.employment != null ? formatCount(localFacts.employment) : NO_LOCAL_ESTIMATE}
-                note={formatConcentration(localFacts?.locationQuotient ?? null) ?? "Annual estimate (BLS OEWS)"}
+                note={
+                  localFacts?.employment == null
+                    ? `BLS publishes no job count for this role in ${local.name}`
+                    : (formatConcentration(localFacts.locationQuotient) ?? "Annual estimate (BLS OEWS)")
+                }
               />
             </>
           ) : (
