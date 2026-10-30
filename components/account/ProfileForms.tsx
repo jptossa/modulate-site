@@ -1,15 +1,10 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { addSkill, removeSkill, searchRoles, setCurrentRole, updateDisplayName } from "@/app/(site)/(account)/profile/actions";
 import { Button } from "@/components/ds";
 import type { OccupationRef } from "@/lib/chat/types";
-
-function useAction() {
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  return { error, setError, pending, startTransition };
-}
+import { useAction } from "./useAction";
 
 export function DisplayNameForm({ initial }: { initial: string }) {
   const [name, setName] = useState(initial);

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { RouteMap, SegmentedControl, StatTile, TrendChart, overlapLevel, type RouteIndex } from "@/components/ds";
 import { route } from "@/components/ds/shared";
-import { formatChange, formatCount, formatPay, NOT_REPORTED } from "@/components/landing/format";
+import { formatChange, formatCount, formatLocalPay, formatPay, NOT_REPORTED } from "@/components/landing/format";
 import { MIN_YEARS, commonYears, indexAndScale, within, yearRange } from "@/lib/market/series";
+import type { AreaRef } from "@/lib/chat/types";
 import type { OriginGroup, RouteVisual } from "@/lib/visualize/data";
 import { ComparisonBars } from "./ComparisonBars";
 import { MAX_COMPARED, RoutePicker } from "./RoutePicker";
@@ -24,13 +25,25 @@ function defaultSelection(group: OriginGroup): string[] {
   return (live.length ? live : group.routes).slice(0, MAX_COMPARED).map((r) => r.id);
 }
 
-const demandWord = (r: RouteVisual) => (r.trend ? `demand ${r.trend.toLowerCase()}` : "demand not reported");
+type Scope = "national" | "local";
+
+/** "1.4x the U.S. share" / "About the U.S. share" / "0.6x the U.S. share". */
+function formatConcentration(lq: number | null): string | undefined {
+  if (lq === null) return undefined;
+  const r = Math.round(lq * 10) / 10;
+  return r === 1 ? "About the U.S. share" : `${r}x the U.S. share`;
+}
+
+const NO_LOCAL_ESTIMATE = "No local estimate";
+
+const demandWord =(r: RouteVisual) => (r.trend ? `demand ${r.trend.toLowerCase()}` : "demand not reported");
 
 /**
  * The map console and the comparison card for one origin at a time. Selection state lives here and nothing
  * is fetched on the client: every route arrives with its data, so switching is instant.
  */
-export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
+export function RouteVisualizer({ groups, area }: { groups: OriginGroup[]; area: AreaRef | null }) {
+  const [scope, setScope] = useState<Scope>("local");
   const [originIndex, setOriginIndex] = useState(0);
   const [picked, setPicked] = useState<Record<string, string[]>>({});
   const [focus, setFocus] = useState(0);
@@ -91,6 +104,8 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
   })();
 
   const change = formatChange(focused.projectedChangePct);
+  const local = area && scope === "local" ? area : null;
+  const localFacts = local ? focused.local : null;
 
   return (
     <>
@@ -132,6 +147,18 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
             options={routes.map((r, i) => ({ id: String(i), label: r.destination.title, swatch: route(i).inverse }))}
           />
         ) : null}
+        {area ? (
+          <SegmentedControl
+            tone="inverse"
+            label="Show pay and jobs for"
+            value={scope}
+            onChange={(id) => setScope(id as Scope)}
+            options={[
+              { id: "local", label: area.name },
+              { id: "national", label: "National" },
+            ]}
+          />
+        ) : null}
         <RouteMap
           key={group.origin.soc}
           entrance
@@ -146,7 +173,7 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
             label="Demand"
             value={focused.trend ?? NOT_REPORTED}
             trend={focused.trend ?? undefined}
-            note={change ? `Projected change 2025 to 2035: ${change}` : undefined}
+            note={change ? `National projected change 2025 to 2035: ${change}` : undefined}
           />
           <StatTile
             tone="inverse"
@@ -155,13 +182,36 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
             meter={focused.overlap ?? undefined}
             route={focusIndex}
           />
-          <StatTile tone="inverse" label="Median pay" value={formatPay(focused.medianPay)} note="Per year" />
-          <StatTile
-            tone="inverse"
-            label="Annual openings"
-            value={formatCount(focused.annualOpenings)}
-            note={focused.annualOpenings === null ? "BLS reports this role only as part of a group" : "Average per year, 2025 to 2035"}
-          />
+          {local ? (
+            <>
+              <StatTile
+                tone="inverse"
+                label="Median pay"
+                value={localFacts?.medianPay != null ? formatLocalPay(localFacts.medianPay, localFacts.medianPayTopCoded) : NO_LOCAL_ESTIMATE}
+                note={localFacts?.medianPay != null ? `Per year in ${local.name}, May ${localFacts.asOfYear}` : `BLS publishes no pay figure for this role in ${local.name}`}
+              />
+              <StatTile
+                tone="inverse"
+                label={`Jobs in ${local.name}`}
+                value={localFacts?.employment != null ? formatCount(localFacts.employment) : NO_LOCAL_ESTIMATE}
+                note={
+                  localFacts?.employment == null
+                    ? `BLS publishes no job count for this role in ${local.name}`
+                    : (formatConcentration(localFacts.locationQuotient) ?? "Annual estimate (BLS OEWS)")
+                }
+              />
+            </>
+          ) : (
+            <>
+              <StatTile tone="inverse" label="Median pay" value={formatPay(focused.medianPay)} note="Per year, national" />
+              <StatTile
+                tone="inverse"
+                label="Annual openings"
+                value={formatCount(focused.annualOpenings)}
+                note={focused.annualOpenings === null ? "BLS reports this role only as part of a group" : "National average per year, 2025 to 2035"}
+              />
+            </>
+          )}
         </div>
         <p className="sr-only" role="status" aria-live="polite">
           {`Routes from ${group.origin.title}. Route ${focusIndex + 1} selected: ${focused.destination.title}, ${demandWord(focused)}`}
@@ -218,6 +268,7 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
           {view === "side-by-side" ? (
             <>
               <ComparisonBars
+                area={local}
                 routes={routes.map((r, i) => ({
                   index: i as RouteIndex,
                   label: r.destination.title,
@@ -225,10 +276,13 @@ export function RouteVisualizer({ groups }: { groups: OriginGroup[] }) {
                   projectedChangePct: r.projectedChangePct,
                   medianPay: r.medianPay,
                   annualOpenings: r.annualOpenings,
+                  localPay: r.local?.medianPay ?? null,
+                  localPayTopCoded: r.local?.medianPayTopCoded ?? false,
+                  localEmployment: r.local?.employment ?? null,
                 }))}
               />
               <span className="type-meta" style={{ color: "var(--ink-subtle)" }}>
-                Each row is drawn on its own scale, so compare the routes within a row, not the rows with each other. Sources: O*NET, BLS Employment Projections 2025 to 2035.
+                {`Each row is drawn on its own scale, so compare the routes within a row, not the rows with each other. Sources: O*NET, BLS Employment Projections 2025 to 2035${local ? `, BLS OEWS local estimates for ${local.name}` : ""}.`}
               </span>
             </>
           ) : null}

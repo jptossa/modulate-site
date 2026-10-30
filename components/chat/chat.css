@@ -186,6 +186,24 @@
   gap: var(--space-sm);
 }
 
+/* Place picker above the thread. Capped so an open picker scrolls instead of squeezing the conversation. */
+.chat-place {
+  flex: none;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-block: var(--space-sm);
+}
+.chat-place summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 600;
+}
+.chat-place[open] summary {
+  margin-bottom: var(--space-sm);
+}
 .chat-footer {
   padding-block: var(--space-md) var(--space-xl);
   font-size: 13px;

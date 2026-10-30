@@ -1,5 +1,6 @@
 import { ToolLoopAgent, createAgentUIStreamResponse, isStepCount, type UIMessage } from "ai";
 import { z } from "zod";
+import { getPreferredArea } from "@/lib/area";
 import { getCurrentUser } from "@/lib/auth";
 import { createEscalation } from "@/lib/chat/escalation";
 import { systemPrompt } from "@/lib/chat/system-prompt";
@@ -48,11 +49,13 @@ export async function POST(req: Request) {
   }
 
   const db = await createClient();
+  // Local figures are an extra: if the area tables are not there yet, chat still works with national data.
+  const area = await getPreferredArea(db, user).catch(() => null);
   const tiers = createEscalation(req.headers, user?.id ?? null);
   const agent = new ToolLoopAgent({
     model: tiers.baseModel,
-    instructions: systemPrompt(!!user, "escalate" in tiers.tools),
-    tools: { ...buildTools(db, user), ...tiers.tools },
+    instructions: systemPrompt(!!user, "escalate" in tiers.tools, area?.name ?? null),
+    tools: { ...buildTools(db, user, area), ...tiers.tools },
     stopWhen: isStepCount(8),
     prepareStep: () => ({ model: tiers.model() }),
   });

@@ -12,7 +12,8 @@
     "ingest:onet": "node --env-file=.env scripts/ingest/onet.mjs",
     "ingest:bls": "node --no-warnings --env-file=.env scripts/ingest/bls.mjs",
     "db": "node --env-file=.env scripts/db.mjs",
-    "ingest:oews": "node --no-warnings --env-file=.env scripts/ingest/oews-series.mjs"
+    "ingest:oews": "node --no-warnings --env-file=.env scripts/ingest/oews-series.mjs",
+    "ingest:areas": "node --no-warnings --env-file=.env scripts/ingest/oews-areas.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.91",

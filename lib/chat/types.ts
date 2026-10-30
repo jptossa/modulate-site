@@ -14,6 +14,31 @@ export interface OccupationRef {
   title: string;
 }
 
+export type AreaKind = "national" | "state" | "metro" | "nonmetro";
+
+/** A place OEWS publishes estimates for. `code` is BLS's own area code; the model never invents one. */
+export interface AreaRef {
+  code: string;
+  name: string;
+  kind: AreaKind;
+}
+
+export interface SearchAreasOutput {
+  query: string;
+  results: AreaRef[];
+}
+
+/** Local OEWS figures for one occupation. A null field is a figure BLS suppressed or does not publish for the place. */
+export interface LocalMarket {
+  employment: number | null;
+  medianPay: number | null;
+  /** True when BLS only says the median is at or above `medianPay` (its $239,200 cap): say "or more". */
+  medianPayTopCoded: boolean;
+  /** Local share of employment divided by the national share: 1.4 means 40% more concentrated than the U.S. */
+  locationQuotient: number | null;
+  asOfYear: number;
+}
+
 export interface SearchOccupationsOutput {
   query: string;
   results: OccupationRef[];
@@ -27,11 +52,15 @@ export interface AdjacentRoute extends OccupationRef {
   projectedChangePct: number | null;
   medianPay: number | null;
   annualOpenings: number | null;
+  /** Present only when `area` is set on the output; null when BLS publishes nothing for the role there. */
+  local?: LocalMarket | null;
 }
 
 export interface AdjacentRolesOutput {
   origin: OccupationRef;
   routes: AdjacentRoute[];
+  /** The place the `local` figures on each route are for. Absent for national results. */
+  area?: AreaRef;
 }
 
 export interface MarketTrendOutput extends OccupationRef {
@@ -46,6 +75,10 @@ export interface MarketTrendOutput extends OccupationRef {
   } | null;
   /** Annual employment estimates (OEWS), oldest first. May be empty. */
   series: Array<{ year: number; employment: number }>;
+  /** The place `local` is for. Absent for national results. */
+  area?: AreaRef;
+  /** Local OEWS figures; null when BLS publishes nothing for this role in `area`. Everything else here is national. */
+  local?: LocalMarket | null;
 }
 
 export interface SkillGapOutput {
@@ -58,11 +91,16 @@ export interface SkillGapOutput {
 export interface ProfileOutput {
   displayName: string | null;
   currentRole: OccupationRef | null;
+  area: AreaRef | null;
   skills: string[];
 }
 
 export interface SetCurrentRoleOutput {
   currentRole: OccupationRef;
+}
+
+export interface SetAreaOutput {
+  area: AreaRef;
 }
 
 export interface AddSkillOutput {

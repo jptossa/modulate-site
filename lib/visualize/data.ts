@@ -2,7 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cacheLife } from "next/cache";
 import type { Trend } from "@/components/ds";
-import type { OccupationRef, RouteStatus } from "@/lib/chat/types";
+import type { AreaRef, OccupationRef, RouteStatus } from "@/lib/chat/types";
+import { areaMarket, type AreaFacts } from "@/lib/market/area-queries";
 import { occupationSeries, skillGap } from "@/lib/market/queries";
 import { shortTitle, type Series } from "@/lib/market/series";
 import { ROUTE_SELECT, toRouteRow, type RouteQueryRow } from "@/lib/routes";
@@ -25,6 +26,8 @@ export interface RouteVisual {
   stops: string[];
   /** Annual employment estimates (OEWS) for the destination, oldest first. May be empty. */
   series: Series;
+  /** Latest OEWS figures for the destination in the user's area. Null when no area is set or BLS publishes nothing for it there. */
+  local: AreaFacts | null;
 }
 
 /** The user's saved routes that start from one role, sharing one "you are here". */
@@ -51,7 +54,15 @@ async function originFacts(originSoc: string): Promise<{ overlaps: Record<string
   return { overlaps, series: await occupationSeries(db, originSoc) };
 }
 
-type RouteFacts = Omit<RouteVisual, "id" | "status" | "destination" | "overlap">;
+type RouteFacts = Omit<RouteVisual, "id" | "status" | "destination" | "overlap" | "local">;
+
+/** Local OEWS figures for several occupations in one area. The area code is the cache key; nothing here is user-specific. */
+async function localFacts(areaCode: string, socs: string[]): Promise<Record<string, AreaFacts>> {
+  "use cache";
+  cacheLife("days");
+
+  return Object.fromEntries(await areaMarket(createPublicClient(), areaCode, socs));
+}
 
 /** Market facts, skill gap and history for one origin to destination pair. Public reference data only. */
 async function routeFacts(originSoc: string, destSoc: string): Promise<RouteFacts> {
@@ -84,9 +95,10 @@ async function routeFacts(originSoc: string, destSoc: string): Promise<RouteFact
 /**
  * The signed-in user's saved routes, grouped by origin (the origin with the most routes first), with chart
  * data attached. `db` is the cookie-bound client, so RLS limits the rows; the reference-data lookups are cached
- * per origin and per pair and hold nothing about the user. Throws on a database error.
+ * per origin and per pair and hold nothing about the user. With an `area`, each route also carries the
+ * destination's local figures. Throws on a database error.
  */
-export async function getVisualizerData(db: SupabaseClient, userId: string): Promise<OriginGroup[]> {
+export async function getVisualizerData(db: SupabaseClient, userId: string, area: AreaRef | null = null): Promise<OriginGroup[]> {
   const { data, error } = await db
     .from("saved_routes")
     .select(ROUTE_SELECT)
@@ -98,6 +110,10 @@ export async function getVisualizerData(db: SupabaseClient, userId: string): Pro
 
   const byOrigin = new Map<string, typeof saved>();
   for (const r of saved) byOrigin.set(r.origin.soc, [...(byOrigin.get(r.origin.soc) ?? []), r]);
+
+  // Sorted so the same set of destinations always hits the same cache entry.
+  const destinations = [...new Set(saved.map((r) => r.destination.soc))].sort();
+  const local = area ? await localFacts(area.code, destinations) : {};
 
   const groups = await Promise.all(
     [...byOrigin.values()].map(async (routes): Promise<OriginGroup> => {
@@ -114,6 +130,7 @@ export async function getVisualizerData(db: SupabaseClient, userId: string): Pro
           status: r.status,
           destination: { soc: r.destination.soc, title: shortTitle(r.destination.title) },
           overlap: facts.overlaps[r.destination.soc] ?? null,
+          local: local[r.destination.soc] ?? null,
           ...perRoute[i],
         })),
       };

@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { RoutesSubnav } from "@/components/account/RoutesSubnav";
+import { AreaPicker } from "@/components/area/AreaPicker";
 import { Button } from "@/components/ds";
 import { RouteVisualizer } from "@/components/visualize/RouteVisualizer";
 import { StatusTrack } from "@/components/visualize/StatusTrack";
 import "@/components/visualize/visualize.css";
+import { getPreferredArea } from "@/lib/area";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getVisualizerData } from "@/lib/visualize/data";
@@ -36,8 +38,10 @@ async function Visualizer() {
   const supabase = await createClient();
 
   let groups;
+  let area;
   try {
-    groups = await getVisualizerData(supabase, user.id);
+    area = await getPreferredArea(supabase, user);
+    groups = await getVisualizerData(supabase, user.id, area);
   } catch {
     return (
       <p role="alert" className="auth-error">
@@ -60,7 +64,11 @@ async function Visualizer() {
 
   return (
     <>
-      <RouteVisualizer groups={groups} />
+      <details className="vz-area">
+        <summary>{area ? `Local figures for ${area.name}` : "Add your place to see local pay and job counts"}</summary>
+        <AreaPicker current={area} id="vz-area" />
+      </details>
+      <RouteVisualizer groups={groups} area={area} />
       <section className="vz-card" aria-labelledby="vz-status-title">
         <div className="vz-card-title">
           <span className="eyebrow">Progress</span>

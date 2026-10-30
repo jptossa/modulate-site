@@ -25,7 +25,7 @@ const SIGNED_IN = `
 This person is signed in. You also have profile and saved-route tools.
 - At the start, call get_profile if you need their current role or skills; do not ask for what you already have.
 - Save a route only when the user asks to save or track it. Call list_routes first to avoid duplicates.
-- Only save a current role or skills when the user has stated them. Confirm what you saved in one sentence.`;
+- Only save a current role, a place (set_area) or skills when the user has stated them. Confirm what you saved in one sentence.`;
 
 const ESCALATE = `
 
@@ -33,6 +33,21 @@ Deeper analysis
 - You have an escalate tool that hands the rest of your reply to a stronger model. Call it, before any other tool, when the question needs careful reasoning: comparing several roles against each other, weighing conflicting or missing data, a vague or multi-part career goal, or a real trade-off. Do not call it for lookups, simple questions or follow-ups, and call it at most once per reply.
 - If it reports that escalation is not available, carry on and answer as well as you can; do not mention the limit unless it matters to the answer.`;
 
-export function systemPrompt(signedIn: boolean, canEscalate = false): string {
-  return BASE + (signedIn ? SIGNED_IN : GUEST) + (canEscalate ? ESCALATE : "");
+const LOCAL = `
+
+Local figures
+- Pay, job counts and concentration come in two scopes. BLS projected change, trend and annual openings are national only; jobs, median pay and concentration (location quotient: 1.4 means 40% more of the local workforce is in the role than across the U.S.) can be local. Always say which scope a figure is in.
+- Local pay (BLS OEWS survey, May 2025) and the national median pay (BLS projections table) come from different BLS products. Do not draw conclusions from a small gap between them; say that a small gap is not meaningful. Compare local figures with each other, or use concentration for how the place stands against the U.S.
+- If a local block is null, BLS publishes no estimate for that role there. Say so. Never fill the gap with the national number and call it local.
+- For a place the user names, find its code with search_areas first. Never guess an area code. If they ask for national figures, set national_only.
+- Metro areas are named after their principal cities, so a nickname or region may not match. If search_areas returns nothing close (or only unrelated places), search again with the main city the person means, such as San Francisco for the Bay Area, before telling them the place isn't in the data. If a region spans several metros, say which one you used.`;
+
+const SAVED_AREA = (name: string) => `
+- The market tools already use this person's saved place: ${name}. Leave area_code out unless they ask about somewhere else.`;
+
+const NO_AREA = `
+- This person has no saved place, so figures are national. When local pay or demand would help, ask where they are once, then use search_areas.`;
+
+export function systemPrompt(signedIn: boolean, canEscalate = false, areaName: string | null = null): string {
+  return BASE + (signedIn ? SIGNED_IN : GUEST) + LOCAL + (areaName ? SAVED_AREA(areaName) : NO_AREA) + (canEscalate ? ESCALATE : "");
 }
