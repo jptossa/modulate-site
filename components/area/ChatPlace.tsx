@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { getPreferredArea } from "@/lib/area";
+import { getPopularAreas, getPreferredArea } from "@/lib/area";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AreaPicker } from "./AreaPicker";
@@ -13,11 +13,12 @@ export async function ChatPlace() {
   await connection();
   const user = await getCurrentUser();
   const area = await getPreferredArea(await createClient(), user).catch(() => null);
+  const suggestions = area ? [] : await getPopularAreas().catch(() => []);
 
   return (
     <details className="chat-place">
       <summary>{area ? `Local figures for ${area.name}` : "Add your place for local pay and job counts"}</summary>
-      <AreaPicker current={area} id="chat-area" />
+      <AreaPicker current={area} id="chat-area" suggestions={suggestions} />
     </details>
   );
 }

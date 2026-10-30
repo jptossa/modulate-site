@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AreaKind, AreaRef } from "@/lib/chat/types";
+import type { AdjacentRolesOutput, AreaKind, AreaRef } from "@/lib/chat/types";
+import { comparePay } from "./compare";
 
 /** Local OEWS figures keyed by SOC code. Same client rules as queries.ts: any client, throws on query errors. */
 export interface AreaFacts {
@@ -52,4 +53,17 @@ export async function areaMarket(db: SupabaseClient, areaCode: string, socs: str
     });
   }
   return out;
+}
+
+/** Adds the place and each route's local figures (with the pay comparison) to an adjacent-roles result. */
+export async function withLocalFigures(db: SupabaseClient, result: AdjacentRolesOutput, area: AreaRef): Promise<AdjacentRolesOutput> {
+  const local = await areaMarket(db, area.code, result.routes.map((r) => r.soc));
+  return {
+    ...result,
+    area,
+    routes: result.routes.map((r) => {
+      const l = local.get(r.soc);
+      return { ...r, local: l ? { ...l, payVsNational: comparePay(l.medianPay, l.medianPayTopCoded, r.medianPay) } : null };
+    }),
+  };
 }
