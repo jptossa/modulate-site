@@ -4,6 +4,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { CurrentUser } from "@/lib/auth";
 import { areaRef } from "@/lib/market/area-queries";
+import { militaryById } from "@/lib/military/queries";
 import { ROUTE_SELECT, ROUTE_STATUSES, toRouteRow, type RouteQueryRow } from "@/lib/routes";
 import type {
   AddSkillOutput,
@@ -14,6 +15,7 @@ import type {
   SavedRouteRow,
   SetAreaOutput,
   SetCurrentRoleOutput,
+  SetMilitaryOutput,
   ToolError,
   UpdateRouteStatusOutput,
 } from "./types";
@@ -35,7 +37,7 @@ export function accountTools(db: SupabaseClient, user: CurrentUser) {
 
   return {
     get_profile: tool({
-      description: "The signed-in user's profile: display name, current role, saved place and the skills they have told us about.",
+      description: "The signed-in user's profile: display name, current role, military background, saved place and the skills they have told us about.",
       inputSchema: z.object({}),
       execute: async (): Promise<ProfileOutput | ToolError> => {
         const [profile, skills] = await Promise.all([
@@ -48,11 +50,16 @@ export function accountTools(db: SupabaseClient, user: CurrentUser) {
         ]);
         if (profile.error || skills.error) return { error: "Could not read the profile." };
 
+        // Read apart from the rest so the profile still loads before the military migration is applied.
+        const militaryId = await db.from("profiles").select("military_id").eq("id", user.id).maybeSingle();
+        const military = militaryId.data?.military_id ? await militaryById(db, militaryId.data.military_id).catch(() => null) : null;
+
         const current = profile.data?.current as unknown as { soc_code: string; title: string } | null | undefined;
         const area = profile.data?.area as unknown as { area_code: string; name: string; kind: AreaKind } | null | undefined;
         return {
           displayName: profile.data?.display_name ?? null,
           currentRole: current ? { soc: current.soc_code, title: current.title } : null,
+          military,
           area: area ? { code: area.area_code, name: area.name, kind: area.kind } : null,
           skills: (skills.data ?? []).map((s) => ((s.skill as unknown as { name: string } | null)?.name ?? s.free_text) as string),
         };
@@ -68,6 +75,19 @@ export function accountTools(db: SupabaseClient, user: CurrentUser) {
         const { error } = await db.from("profiles").update({ current_soc: soc }).eq("id", user.id);
         if (error) return { error: "Could not update the profile." };
         return { currentRole: { soc: occ.soc_code, title: occ.title } };
+      },
+    }),
+
+    set_military_background: tool({
+      description:
+        "Save the military code the user served in to their profile. Only call this after the user has said which code was theirs; if search_military returned several, ask which one. Pass the id from search_military. This does not change their current role.",
+      inputSchema: z.object({ military_id: z.number().int().positive().describe("The id from a search_military result") }),
+      execute: async ({ military_id }): Promise<SetMilitaryOutput | ToolError> => {
+        const military = await militaryById(db, military_id).catch(() => null);
+        if (!military) return { error: `No military code with id ${military_id} in the data. Get it from search_military.` };
+        const { error } = await db.from("profiles").update({ military_id }).eq("id", user.id);
+        if (error) return { error: "Could not update the profile." };
+        return { military };
       },
     }),
 

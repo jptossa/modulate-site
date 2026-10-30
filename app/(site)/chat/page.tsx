@@ -16,7 +16,7 @@ export default function ChatPage() {
       </main>
       <footer className="container chat-footer">
         <p>
-          Occupation and skills data from O*NET 31.0 by the U.S. Department of Labor, licensed CC BY 4.0. Job-market figures from the U.S. Bureau of Labor Statistics.
+          Occupation and skills data from O*NET 31.0 by the U.S. Department of Labor, licensed CC BY 4.0, and the O*NET Military Crosswalk, licensed CC BY 4.0. Job-market figures from the U.S. Bureau of Labor Statistics.
         </p>
       </footer>
     </div>

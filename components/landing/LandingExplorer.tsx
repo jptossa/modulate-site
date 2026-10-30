@@ -20,6 +20,7 @@ import { MAX_CHARTED, canChart, chartData } from "@/lib/landing/chart-data";
 import type { LandingOrigin, LandingRoute } from "@/lib/landing/types";
 import { SHARE_OF_PEAK_TICKS, yearRange } from "@/lib/market/series";
 import { formatChange, formatCount, formatPay } from "./format";
+import { LandingMilitary } from "./LandingMilitary";
 
 const COUNT_WORD = ["One", "Two", "Three"];
 
@@ -29,7 +30,10 @@ const COUNT_WORD = ["One", "Two", "Three"];
  * The map and charts draw up to three routes (the design system has three route identities); the person
  * chooses which, and every other route stays in the "more routes" list.
  */
-export function LandingExplorer({ origins, signUp, place }: { origins: LandingOrigin[]; signUp: ReactNode; place: ReactNode }) {
+export function LandingExplorer({ origins: curated, signUp, place }: { origins: LandingOrigin[]; signUp: ReactNode; place: ReactNode }) {
+  // Origins the visitor adds from a military code, after the curated chips. Built on demand, not part of the cached bundle.
+  const [added, setAdded] = useState<LandingOrigin[]>([]);
+  const origins = useMemo(() => [...curated, ...added], [curated, added]);
   const [originIndex, setOriginIndex] = useState(0);
   // The routes drawn on the map and charts, in route-identity order. Starts as the origin's default three.
   const [charted, setCharted] = useState<string[]>(origins[0].defaultCharted);
@@ -56,6 +60,16 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
   const pickOrigin = (i: number) => {
     setOriginIndex(i);
     setCharted(origins[i].defaultCharted);
+    setPicked(0);
+    setShowMore(false);
+  };
+
+  /** Adds a chip for a military code's role (or reuses the one already added) and selects it. */
+  const addOrigin = (o: LandingOrigin) => {
+    const existing = origins.findIndex((x) => x.soc === o.soc && x.label === o.label);
+    if (existing < 0) setAdded([...added, o]);
+    setOriginIndex(existing < 0 ? origins.length : existing);
+    setCharted(o.defaultCharted);
     setPicked(0);
     setShowMore(false);
   };
@@ -99,12 +113,13 @@ export function LandingExplorer({ origins, signUp, place }: { origins: LandingOr
           </span>
           <div className="md-row" role="group" aria-labelledby="lp-chips-label">
             {origins.map((o, i) => (
-              <Chip key={o.soc} selected={i === originIndex} onClick={() => pickOrigin(i)}>
+              <Chip key={`${o.soc}:${o.label}`} selected={i === originIndex} onClick={() => pickOrigin(i)}>
                 {o.label}
               </Chip>
             ))}
           </div>
         </div>
+        <LandingMilitary onOrigin={addOrigin} />
         {place}
       </section>
 

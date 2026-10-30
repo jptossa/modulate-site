@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import type { OccupationRef } from "@/lib/chat/types";
+import type { MilitaryMatch, OccupationRef } from "@/lib/chat/types";
+import { militaryById, searchMilitary } from "@/lib/military/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "../actions-shared";
 
@@ -62,6 +63,37 @@ export async function setCurrentRole(code: string | null): Promise<ActionResult>
   }
   const { error } = await supabase.from("profiles").update({ current_soc: parsed.data }).eq("id", user.id);
   if (error) return { error: "Could not save your current role. Try again in a moment." };
+
+  revalidatePath("/profile");
+  return {};
+}
+
+export async function searchMilitaryCodes(query: string): Promise<{ results: MilitaryMatch[]; error?: string }> {
+  const q = z.string().trim().min(1).max(80).safeParse(query);
+  if (!q.success) return { results: [], error: "Enter a code or title, such as 68W or hospital corpsman." };
+
+  await requireUser("/profile");
+  const supabase = await createClient();
+  try {
+    return { results: await searchMilitary(supabase, q.data) };
+  } catch {
+    return { results: [], error: "Military code search is not available right now. Try again in a moment." };
+  }
+}
+
+/** Saves the military code the person served in, or clears it with null. Does not touch their current role. */
+export async function setMilitaryBackground(id: number | null): Promise<ActionResult> {
+  const parsed = z.number().int().positive().nullable().safeParse(id);
+  if (!parsed.success) return { error: "That military code is not valid." };
+
+  const user = await requireUser("/profile");
+  const supabase = await createClient();
+  if (parsed.data !== null) {
+    const found = await militaryById(supabase, parsed.data).catch(() => null);
+    if (!found) return { error: "We have no data for that military code." };
+  }
+  const { error } = await supabase.from("profiles").update({ military_id: parsed.data }).eq("id", user.id);
+  if (error) return { error: "Could not save your military background. Try again in a moment." };
 
   revalidatePath("/profile");
   return {};

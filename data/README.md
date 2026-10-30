@@ -9,6 +9,15 @@ Raw downloads live here and are git-ignored (`/data/` in `.gitignore`, except th
 - License: CC BY 4.0. Attribution required: "O*NET 31.0 Database by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA). Used under the CC BY 4.0 license." Changes made: skills are normalised and averaged per SOC code.
 - Load: `node --env-file=.env scripts/ingest/onet.mjs`
 
+## O*NET Military Crosswalk (military codes to civilian roles)
+
+- Source: https://onetcenter.org/dl_files/2019/military_crosswalk.zip (4,826,815 bytes; the O*NET crosswalks page labels it "updated August 2024", and the file inside is `milx0724.csv`). Built on the Defense Manpower Data Center MOC crosswalk. Also lists O*NET's other crosswalks at https://onetcenter.org/crosswalks.html.
+- Put the zip in `data/onet-military/raw/`, extract it to `data/onet-military/extracted/` so the files are in `data/onet-military/extracted/military_crosswalk/` (`milx0724.csv`, `.xlsx`, `.accdb` and a `Read Me.pdf` describing the columns). The loader reads the CSV: the XLSX would turn codes such as Marine `0311` into numbers.
+- License: CC BY 4.0. Attribution: "Military Crosswalk by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA). Used under the CC BY 4.0 license." Changes made: only codes linked to roles in the `occupations` table are kept, and O*NET-SOC detail codes are folded into their 6-digit SOC.
+- What loads: Army, Navy, Air Force, Marine Corps, Coast Guard and Space Force occupational codes (service letters A J Q N P S V F X Y Z M C H L O U; OPM, DoD and NSPS codes are skipped). A code has an active and a retired record when a service reuses it; the active one wins, and a code with only retired records is kept and flagged inactive. Codes O*NET links only to roles we do not carry (military-only jobs such as Infantry) are kept with no roles and the O*NET titles in `other_links`.
+- Not loaded: the COOL and ASVAB supplemental files (`cool_supplemental_data.xlsx`, `citm_supplemental_data.xlsx` in the same `dl_files/2019/` folder).
+- Run migration `20261030000000_military_crosswalk.sql` first, then `npm run ingest:military` (add `-- --dry-run` first; it only reads the `occupations` table).
+
 ## BLS (projections and pay)
 
 bls.gov blocks scripted downloads, so download these in a browser into `data/bls/`:

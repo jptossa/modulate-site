@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { addSkill, removeSkill, searchRoles, setCurrentRole, updateDisplayName } from "@/app/(site)/(account)/profile/actions";
+import {
+  addSkill,
+  removeSkill,
+  searchMilitaryCodes,
+  searchRoles,
+  setCurrentRole,
+  setMilitaryBackground,
+  updateDisplayName,
+} from "@/app/(site)/(account)/profile/actions";
 import { Button } from "@/components/ds";
-import type { OccupationRef } from "@/lib/chat/types";
+import type { MilitaryMatch, OccupationRef } from "@/lib/chat/types";
+import { militaryName } from "@/lib/military/labels";
 import { useAction } from "./useAction";
 
 export function DisplayNameForm({ initial }: { initial: string }) {
@@ -131,6 +140,137 @@ export function CurrentRoleForm({ current }: { current: OccupationRef | null }) 
         <div>
           <Button variant="secondary" onClick={() => choose(null)} disabled={pending}>
             Clear current role
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const matchLine = (m: MilitaryMatch) => `${militaryName(m)}, ${m.title}${m.active ? "" : " (retired code)"}`;
+
+/** What a military code links to: roles to start from, or a plain note when O*NET has no civilian match. */
+function MilitaryRoles({ match, onUse, pending }: { match: MilitaryMatch; onUse?: (soc: string) => void; pending?: boolean }) {
+  if (match.roles.length === 0) {
+    return (
+      <p className="hint">
+        {`No civilian match${match.otherLinks.length > 0 ? `. O*NET lists this code as ${match.otherLinks.join(", ")}` : ""}. Search for your role by what the work involved instead.`}
+      </p>
+    );
+  }
+  return (
+    <ul className="account-results" aria-label="Roles O*NET matches to this code">
+      {match.roles.map((r) => (
+        <li key={r.soc}>
+          {onUse ? (
+            <Button variant="secondary" onClick={() => onUse(r.soc)} disabled={pending}>
+              Use {r.title} as current role
+            </Button>
+          ) : (
+            r.title
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function MilitaryForm({ current }: { current: MilitaryMatch | null }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<MilitaryMatch[] | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const { error, setError, pending, startTransition } = useAction();
+
+  const search = (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setNote(null);
+    startTransition(async () => {
+      const result = await searchMilitaryCodes(query);
+      if (result.error) setError(result.error);
+      setResults(result.error ? null : result.results);
+    });
+  };
+
+  const choose = (id: number | null) => {
+    setError(null);
+    setNote(null);
+    startTransition(async () => {
+      const result = await setMilitaryBackground(id);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setResults(null);
+      setQuery("");
+    });
+  };
+
+  const useRole = (soc: string) => {
+    setError(null);
+    startTransition(async () => {
+      const result = await setCurrentRole(soc);
+      if (result.error) setError(result.error);
+      else setNote("Saved as your current role.");
+    });
+  };
+
+  return (
+    <div className="account-section">
+      <p className="account-current">
+        <span className="type-label">Military code</span>
+        <strong>{current ? matchLine(current) : "Not set"}</strong>
+      </p>
+      {current ? <MilitaryRoles match={current} onUse={useRole} pending={pending} /> : null}
+
+      <form onSubmit={search} className="account-inline" noValidate>
+        <div className="field">
+          <label htmlFor="military-search">Search by code or title</label>
+          <input
+            id="military-search"
+            type="search"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-describedby="military-search-hint"
+          />
+          <span id="military-search-hint" className="hint">
+            An Army MOS, Navy rating, Air Force AFSC, Marine MOS or Coast Guard rating, such as 68W or hospital corpsman.
+          </span>
+        </div>
+        <Button type="submit" variant="secondary" disabled={pending || query.trim().length < 1}>
+          Find codes
+        </Button>
+      </form>
+
+      {error ? (
+        <p role="alert" className="auth-error">
+          {error}
+        </p>
+      ) : null}
+      {note ? <p role="status">{note}</p> : null}
+
+      {results ? (
+        results.length > 0 ? (
+          <ul className="account-results" aria-label="Matching military codes">
+            {results.map((m) => (
+              <li key={m.id}>
+                <Button variant="secondary" onClick={() => choose(m.id)} disabled={pending}>
+                  Use {matchLine(m)}
+                </Button>
+                <MilitaryRoles match={m} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p role="status">No codes matched. Check the code or try words from the job title.</p>
+        )
+      ) : null}
+
+      {current ? (
+        <div>
+          <Button variant="secondary" onClick={() => choose(null)} disabled={pending}>
+            Clear military code
           </Button>
         </div>
       ) : null}

@@ -6,6 +6,10 @@ const SOURCES = [
     use: "Skills, knowledge and how much each role needs of them. This is what skill overlap and the stops on each route are built from.",
   },
   {
+    name: "O*NET Military Crosswalk",
+    use: "Links military codes (Army MOS, Navy ratings, Air Force and Marine Corps codes) to the civilian roles O*NET matches them to. Built on a Defense Manpower Data Center crosswalk.",
+  },
+  {
     name: "BLS Employment Projections, 2025 to 2035",
     use: "Demand (Rising, Steady or Cooling), projected change, median pay and annual openings.",
   },
@@ -41,7 +45,8 @@ export function DataBand() {
         <p className="type-meta" style={{ color: "var(--ink-subtle)", maxWidth: 760 }}>
           O*NET 31.0 Database by the U.S. Department of Labor, Employment and Training Administration (USDOL/ETA). Used under the CC BY 4.0
           license. O*NET® is a trademark of USDOL/ETA. Modulate has modified this information; USDOL/ETA has not approved, endorsed, or
-          tested these modifications.
+          tested these modifications. Military Crosswalk by the U.S. Department of Labor, Employment and Training Administration, used under
+          the CC BY 4.0 license; Modulate has filtered it to the roles it carries data for.
         </p>
       </div>
     </section>
