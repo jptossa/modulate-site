@@ -3,13 +3,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { tool } from "ai";
 import { z } from "zod";
 import type { CurrentUser } from "@/lib/auth";
+import { areaRef } from "@/lib/market/area-queries";
 import { ROUTE_SELECT, ROUTE_STATUSES, toRouteRow, type RouteQueryRow } from "@/lib/routes";
 import type {
   AddSkillOutput,
+  AreaKind,
   ListRoutesOutput,
   ProfileOutput,
   SaveRouteOutput,
   SavedRouteRow,
+  SetAreaOutput,
   SetCurrentRoleOutput,
   ToolError,
   UpdateRouteStatusOutput,
@@ -32,19 +35,25 @@ export function accountTools(db: SupabaseClient, user: CurrentUser) {
 
   return {
     get_profile: tool({
-      description: "The signed-in user's profile: display name, current role and the skills they have told us about.",
+      description: "The signed-in user's profile: display name, current role, saved place and the skills they have told us about.",
       inputSchema: z.object({}),
       execute: async (): Promise<ProfileOutput | ToolError> => {
         const [profile, skills] = await Promise.all([
-          db.from("profiles").select("display_name, current:occupations!current_soc(soc_code, title)").eq("id", user.id).maybeSingle(),
+          db
+            .from("profiles")
+            .select("display_name, current:occupations!current_soc(soc_code, title), area:areas!area_code(area_code, name, kind)")
+            .eq("id", user.id)
+            .maybeSingle(),
           db.from("user_skills").select("free_text, skill:skills(name)").eq("user_id", user.id).order("created_at"),
         ]);
         if (profile.error || skills.error) return { error: "Could not read the profile." };
 
         const current = profile.data?.current as unknown as { soc_code: string; title: string } | null | undefined;
+        const area = profile.data?.area as unknown as { area_code: string; name: string; kind: AreaKind } | null | undefined;
         return {
           displayName: profile.data?.display_name ?? null,
           currentRole: current ? { soc: current.soc_code, title: current.title } : null,
+          area: area ? { code: area.area_code, name: area.name, kind: area.kind } : null,
           skills: (skills.data ?? []).map((s) => ((s.skill as unknown as { name: string } | null)?.name ?? s.free_text) as string),
         };
       },
@@ -59,6 +68,19 @@ export function accountTools(db: SupabaseClient, user: CurrentUser) {
         const { error } = await db.from("profiles").update({ current_soc: soc }).eq("id", user.id);
         if (error) return { error: "Could not update the profile." };
         return { currentRole: { soc: occ.soc_code, title: occ.title } };
+      },
+    }),
+
+    set_area: tool({
+      description:
+        "Save the state or metro area the user works in or wants to look at, so market figures can be shown locally. Only call this after the user has said where they are or asked you to save a place. Get the code from search_areas; if several places match, ask which one.",
+      inputSchema: z.object({ area_code: z.string().regex(/^[A-Za-z0-9]{1,12}$/).describe("Area code from search_areas") }),
+      execute: async ({ area_code }): Promise<SetAreaOutput | ToolError> => {
+        const area = await areaRef(db, area_code).catch(() => null);
+        if (!area || area.kind === "national") return { error: `No place with area code ${area_code} in the data.` };
+        const { error } = await db.from("profiles").update({ area_code }).eq("id", user.id);
+        if (error) return { error: "Could not update the profile." };
+        return { area };
       },
     }),
 

@@ -3,10 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { tool } from "ai";
 import { z } from "zod";
 import type { Trend } from "@/components/ds";
+import { areaMarket, areaRef, searchAreas } from "@/lib/market/area-queries";
 import { adjacentRoutes, occupationSeries, occupationTitle, skillGap } from "@/lib/market/queries";
 import type {
   AdjacentRolesOutput,
+  AreaRef,
   MarketTrendOutput,
+  SearchAreasOutput,
   SearchOccupationsOutput,
   SkillGapOutput,
   ToolError,
@@ -17,6 +20,11 @@ const SOC = z
   .regex(/^\d{2}-\d{4}$/, "A 6-digit SOC code such as 25-2021")
   .describe("6-digit SOC code, e.g. 25-2021. Get it from search_occupations; never guess one.");
 
+const AREA_CODE = z
+  .string()
+  .regex(/^[A-Za-z0-9]{1,12}$/)
+  .describe("Area code from search_areas; never guess one. Omit to use the user's saved place, if any.");
+
 /** Escape the characters ilike treats as wildcards. */
 const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
@@ -26,8 +34,16 @@ const notFound = (soc: string): ToolError => ({ error: `No occupation with SOC c
  * Read-only market tools, available to everyone. They run on the cookie-bound client, so RLS applies;
  * the reference tables are public read.
  */
-export function marketTools(db: SupabaseClient) {
+export function marketTools(db: SupabaseClient, defaultArea: AreaRef | null = null) {
   const titleOf = (soc: string) => occupationTitle(db, soc);
+
+  /** An explicit code wins, then the person's saved place. Null means national only. */
+  async function resolveArea(areaCode: string | undefined, nationalOnly: boolean): Promise<AreaRef | null | ToolError> {
+    if (nationalOnly) return null;
+    if (!areaCode) return defaultArea;
+    const area = await areaRef(db, areaCode).catch(() => null);
+    return area && area.kind !== "national" ? area : { error: `No place with area code ${areaCode} in the data. Get it from search_areas.` };
+  }
 
   return {
     search_occupations: tool({
@@ -54,16 +70,39 @@ export function marketTools(db: SupabaseClient) {
       },
     }),
 
+    search_areas: tool({
+      description:
+        "Find a state or metropolitan area by name, best match first. Use this to turn a place the user names (\"Austin\", \"Ohio\") into an area code for the other tools. Never guess an area code. Not needed for the user's saved place, which the market tools use on their own.",
+      inputSchema: z.object({
+        query: z.string().trim().min(2).max(80).describe("Place name, e.g. \"Austin\" or \"Ohio\""),
+      }),
+      execute: async ({ query }): Promise<SearchAreasOutput | ToolError> => {
+        try {
+          return { query, results: await searchAreas(db, query) };
+        } catch {
+          return { error: "Place search failed." };
+        }
+      },
+    }),
+
     adjacent_roles: tool({
       description:
-        "Roles whose skill profile overlaps with the origin role, ranked by overlap, with trend and pay for each. Roles from other occupation families come first, and the origin's own family is left out, so the results are real alternatives. Returns 3 routes by default.",
+        "Roles whose skill profile overlaps with the origin role, ranked by overlap, with trend and pay for each. Roles from other occupation families come first, and the origin's own family is left out, so the results are real alternatives. Returns 3 routes by default. When the user has a saved place (or you pass area_code) each route also carries local jobs and pay; trend and openings stay national.",
       inputSchema: z.object({
         origin_soc: SOC,
         limit: z.number().int().min(1).max(5).default(3),
+        area_code: AREA_CODE.optional(),
+        national_only: z.boolean().default(false).describe("True to skip local figures even when the user has a saved place."),
       }),
-      execute: async ({ origin_soc, limit }): Promise<AdjacentRolesOutput | ToolError> => {
+      execute: async ({ origin_soc, limit, area_code, national_only }): Promise<AdjacentRolesOutput | ToolError> => {
+        const area = await resolveArea(area_code, national_only);
+        if (area && "error" in area) return area;
         try {
-          return (await adjacentRoutes(db, origin_soc, limit)) ?? notFound(origin_soc);
+          const result = await adjacentRoutes(db, origin_soc, limit);
+          if (!result) return notFound(origin_soc);
+          if (!area) return result;
+          const local = await areaMarket(db, area.code, result.routes.map((r) => r.soc));
+          return { ...result, area, routes: result.routes.map((r) => ({ ...r, local: local.get(r.soc) ?? null })) };
         } catch {
           return { error: "Could not compute adjacent roles." };
         }
@@ -72,11 +111,18 @@ export function marketTools(db: SupabaseClient) {
 
     market_trend: tool({
       description:
-        "Job-market facts for one occupation: BLS projected change, median pay, openings, trend (Rising / Steady / Cooling), and annual employment estimates. Fields can be null when BLS reports the occupation only as part of a group; say so rather than guessing.",
-      inputSchema: z.object({ soc: SOC }),
-      execute: async ({ soc }): Promise<MarketTrendOutput | ToolError> => {
+        "Job-market facts for one occupation: BLS projected change, median pay, openings, trend (Rising / Steady / Cooling), and annual employment estimates. Fields can be null when BLS reports the occupation only as part of a group; say so rather than guessing. When the user has a saved place (or you pass area_code) it also returns local jobs, local median pay and concentration versus the U.S. for that place; the other figures stay national, so say which is which. A null local block means BLS publishes no estimate there: say so and do not substitute national numbers. If medianPayTopCoded is true the local median is at least that amount (BLS caps it), so say \"at least\" or \"or more\".",
+      inputSchema: z.object({
+        soc: SOC,
+        area_code: AREA_CODE.optional(),
+        national_only: z.boolean().default(false).describe("True to skip local figures even when the user has a saved place."),
+      }),
+      execute: async ({ soc, area_code, national_only }): Promise<MarketTrendOutput | ToolError> => {
         const occ = await titleOf(soc);
         if (!occ) return notFound(soc);
+        const area = await resolveArea(area_code, national_only);
+        if (area && "error" in area) return area;
+        const local = area ? ((await areaMarket(db, area.code, [soc]).catch(() => null))?.get(soc) ?? null) : undefined;
 
         const [market, series] = await Promise.all([
           db
@@ -102,6 +148,7 @@ export function marketTools(db: SupabaseClient) {
               }
             : null,
           series,
+          ...(area ? { area, local: local ?? null } : {}),
         };
       },
     }),

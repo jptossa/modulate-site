@@ -27,6 +27,8 @@ export interface ToolPart {
 const WORKING_LABEL: Record<string, string> = {
   escalate: "Taking a closer look…",
   search_occupations: "Looking up roles…",
+  search_areas: "Looking up places…",
+  set_area: "Saving your place…",
   adjacent_roles: "Mapping adjacent roles…",
   market_trend: "Checking the job market…",
   skill_gap: "Comparing skills…",
@@ -49,6 +51,13 @@ const STATUS_LABEL: Record<RouteStatus, string> = {
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const int = new Intl.NumberFormat("en-US");
 const signedPct = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
+
+/** "1.4x the U.S. share" / "About the U.S. share"; undefined when BLS gives no quotient. */
+function concentrationNote(lq: number | null): string | undefined {
+  if (lq === null) return undefined;
+  const r = Math.round(lq * 10) / 10;
+  return r === 1 ? "About the U.S. share" : `${r}x the U.S. share`;
+}
 
 export function ToolResult({ part }: { part: ToolPart }) {
   const name = part.type.replace(/^tool-/, "");
@@ -81,7 +90,7 @@ export function ToolResult({ part }: { part: ToolPart }) {
     case "update_route_status":
       return <SavedRouteCard route={(part.output as UpdateRouteStatusOutput).route} note="Updated" />;
     default:
-      // search_occupations and the profile tools have no card; the reply text carries the result.
+      // search_occupations, search_areas and the profile tools have no card; the reply text carries the result.
       return null;
   }
 }
@@ -124,6 +133,9 @@ function AdjacentCard({ data }: { data: AdjacentRolesOutput }) {
           picked.medianPay !== null && `Median pay ${usd.format(picked.medianPay)}`,
           picked.projectedChangePct !== null && `${signedPct(picked.projectedChangePct)} projected employment change`,
           picked.annualOpenings !== null && `${int.format(picked.annualOpenings)} openings a year`,
+          data.area && picked.local?.medianPay != null && `${usd.format(picked.local.medianPay)}${picked.local.medianPayTopCoded ? " or more" : ""} median pay in ${data.area.name}`,
+          data.area && picked.local?.employment != null && `${int.format(picked.local.employment)} jobs in ${data.area.name}`,
+          data.area && !picked.local && `No local estimate for ${data.area.name}`,
         ]
           .filter(Boolean)
           .join(" · ") || "No pay or openings figures reported for this role."}
@@ -153,7 +165,7 @@ function MarketCard({ data }: { data: MarketTrendOutput }) {
           <div className="chat-stats">
             {m.trend ? <StatTile label="Demand" value={m.trend} trend={m.trend} /> : null}
             {m.projectedChangePct !== null ? <StatTile label="Projected change" value={signedPct(m.projectedChangePct)} note="Over 2025–35" /> : null}
-            {m.medianPay !== null ? <StatTile label="Median pay" value={usd.format(m.medianPay)} note="Per year" /> : null}
+            {m.medianPay !== null ? <StatTile label="Median pay" value={usd.format(m.medianPay)} note={data.area ? "Per year, national" : "Per year"} /> : null}
             {m.annualOpenings !== null ? <StatTile label="Openings" value={int.format(m.annualOpenings)} note="Per year, projected" /> : null}
             {m.employment !== null ? <StatTile label="Employment" value={int.format(m.employment)} note="Jobs, base year" /> : null}
           </div>
@@ -162,6 +174,27 @@ function MarketCard({ data }: { data: MarketTrendOutput }) {
       ) : (
         <p className="chat-tool-note">No market figures reported for this role.</p>
       )}
+      {data.area ? (
+        data.local && (data.local.employment !== null || data.local.medianPay !== null) ? (
+          <>
+            <div className="chat-stats">
+              <StatTile
+                label={`Median pay in ${data.area.name}`}
+                value={data.local.medianPay !== null ? `${usd.format(data.local.medianPay)}${data.local.medianPayTopCoded ? " or more" : ""}` : "No local estimate"}
+                note={data.local.medianPay !== null ? `Per year, May ${data.local.asOfYear}` : undefined}
+              />
+              <StatTile
+                label={`Jobs in ${data.area.name}`}
+                value={data.local.employment !== null ? int.format(data.local.employment) : "No local estimate"}
+                note={concentrationNote(data.local.locationQuotient)}
+              />
+            </div>
+            <p className="chat-source">{`Local source: BLS OEWS, May ${data.local.asOfYear}.`}</p>
+          </>
+        ) : (
+          <p className="chat-tool-note">{`BLS publishes no estimate for this role in ${data.area.name}.`}</p>
+        )
+      ) : null}
       {years.length >= 3 && peak > 0 ? (
         <TrendChart
           series={[

@@ -1,7 +1,8 @@
 import { overlapLevel, type RouteIndex } from "@/components/ds";
 import { InView } from "@/components/ds/InView";
 import { RouteKey, route } from "@/components/ds/shared";
-import { formatChange, formatCount, formatPay, NOT_REPORTED } from "@/components/landing/format";
+import { formatChange, formatCount, formatLocalPay, formatPay, NOT_REPORTED } from "@/components/landing/format";
+import type { AreaRef } from "@/lib/chat/types";
 
 export interface ComparisonRoute {
   index: RouteIndex;
@@ -10,6 +11,11 @@ export interface ComparisonRoute {
   projectedChangePct: number | null;
   medianPay: number | null;
   annualOpenings: number | null;
+  /** Latest OEWS figures in the chosen area; null when BLS publishes nothing for the role there. */
+  localPay?: number | null;
+  /** The local median is BLS's cap, so it is printed as "or more". */
+  localPayTopCoded?: boolean;
+  localEmployment?: number | null;
 }
 
 interface Metric {
@@ -55,6 +61,26 @@ const METRICS: Metric[] = [
   },
 ];
 
+/** Rows added when a place is chosen. A role with no estimate there prints "No local estimate" and gets no bar. */
+function localMetrics(area: AreaRef): Metric[] {
+  return [
+    {
+      id: "local-pay",
+      title: `Median pay per year in ${area.name}`,
+      hint: "Typical yearly pay in your place. Bars start at $0.",
+      value: (r) => r.localPay ?? null,
+      format: (r) => (r.localPay == null ? "No local estimate" : formatLocalPay(r.localPay, r.localPayTopCoded ?? false)),
+    },
+    {
+      id: "local-jobs",
+      title: `Jobs in ${area.name}`,
+      hint: "Estimated jobs in your place today. Bars start at 0.",
+      value: (r) => r.localEmployment ?? null,
+      format: (r) => (r.localEmployment == null ? "No local estimate" : formatCount(r.localEmployment)),
+    },
+  ];
+}
+
 /**
  * Where the zero line sits and how far a bar reaches, as percentages of the track. A row with a negative
  * value (a shrinking role) gets room on the left of the zero line, so every bar starts at zero.
@@ -72,10 +98,11 @@ function bar(value: number, all: number[], ceiling?: number) {
  * One row per measure, one bar per route. Bars are scaled within their row (never across rows), and the
  * value is always printed, so the bars are decoration for sighted users and the list reads on its own.
  */
-export function ComparisonBars({ routes }: { routes: ComparisonRoute[] }) {
+export function ComparisonBars({ routes, area = null }: { routes: ComparisonRoute[]; area?: AreaRef | null }) {
+  const metrics = area ? [...METRICS.filter((m) => m.id !== "pay"), ...localMetrics(area)] : METRICS;
   return (
     <InView className="vz-bars">
-      {METRICS.map((m) => {
+      {metrics.map((m) => {
         const values = routes.map(m.value).filter((v): v is number => v !== null);
         return (
           <section key={m.id} className="vz-metric" aria-labelledby={`vz-m-${m.id}`}>

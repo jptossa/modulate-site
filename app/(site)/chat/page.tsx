@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { ChatPlace } from "@/components/area/ChatPlace";
 import { ChatThread } from "@/components/chat/ChatThread";
 
 export const metadata: Metadata = { title: "Chat" };
@@ -7,6 +9,9 @@ export default function ChatPage() {
   return (
     <div className="chat-page">
       <main className="chat-main">
+        <Suspense fallback={null}>
+          <ChatPlace />
+        </Suspense>
         <ChatThread />
       </main>
       <footer className="container chat-footer">
