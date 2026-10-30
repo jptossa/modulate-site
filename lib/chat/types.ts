@@ -1,5 +1,6 @@
 import type { Trend } from "@/components/ds";
 import type { PayComparison } from "@/lib/market/compare";
+import type { MilitaryBranch, MilitaryCategory } from "@/lib/military/labels";
 
 /**
  * Shapes the chat tools return. Shared by the server tools and the client cards so the two stay in step.
@@ -91,9 +92,34 @@ export interface SkillGapOutput {
   stops: string[];
 }
 
+/** A military occupation code and the civilian roles O*NET links it to (reference data, never user input). */
+export interface MilitaryMatch {
+  id: number;
+  branch: MilitaryBranch;
+  category: MilitaryCategory;
+  code: string;
+  title: string;
+  /** False when the service has retired the code; veterans still hold old ones. */
+  active: boolean;
+  /** Roles we carry data for, in the order O*NET lists them. Empty for combat and other military-only codes. */
+  roles: OccupationRef[];
+  /** When `roles` is empty: the titles O*NET links the code to instead ("Infantry"). */
+  otherLinks: string[];
+}
+
+export interface SearchMilitaryOutput {
+  query: string;
+  results: MilitaryMatch[];
+}
+
+export interface SetMilitaryOutput {
+  military: MilitaryMatch;
+}
+
 export interface ProfileOutput {
   displayName: string | null;
   currentRole: OccupationRef | null;
+  military?: MilitaryMatch | null;
   area: AreaRef | null;
   skills: string[];
 }

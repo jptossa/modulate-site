@@ -17,10 +17,13 @@ import {
   type RouteStatus,
   type SaveRouteOutput,
   type SearchAreasOutput,
+  type SearchMilitaryOutput,
   type SavedRouteRow,
+  type SetMilitaryOutput,
   type SkillGapOutput,
   type UpdateRouteStatusOutput,
 } from "@/lib/chat/types";
+import { militaryName } from "@/lib/military/labels";
 
 /** The parts of an AI SDK tool UI part this file reads. */
 export interface ToolPart {
@@ -34,6 +37,8 @@ const WORKING_LABEL: Record<string, string> = {
   escalate: "Taking a closer look…",
   search_occupations: "Looking up roles…",
   search_areas: "Looking up places…",
+  search_military: "Looking up your military code…",
+  set_military_background: "Saving your military background…",
   set_area: "Saving your place…",
   adjacent_roles: "Mapping adjacent roles…",
   market_trend: "Checking the job market…",
@@ -87,6 +92,10 @@ export function ToolResult({ part }: { part: ToolPart }) {
       return <AdjacentCard data={part.output as AdjacentRolesOutput} />;
     case "search_areas":
       return <PlacesCard data={part.output as SearchAreasOutput} />;
+    case "search_military":
+      return <MilitaryCard data={part.output as SearchMilitaryOutput} />;
+    case "set_military_background":
+      return <p className="chat-tool-note" role="status">{`Saved ${militaryName((part.output as SetMilitaryOutput).military)} to your profile.`}</p>;
     case "skill_gap":
       return <SkillGapCard data={part.output as SkillGapOutput} />;
     case "market_trend":
@@ -277,6 +286,30 @@ function PlacesCard({ data }: { data: SearchAreasOutput }) {
           ) : null}
         </>
       )}
+    </section>
+  );
+}
+
+/** Military codes found, each with the civilian roles O*NET links it to. Nothing to press: the model carries on from the roles. */
+function MilitaryCard({ data }: { data: SearchMilitaryOutput }) {
+  if (data.results.length === 0) return <p className="chat-tool-note">{`No military code found for "${data.query}".`}</p>;
+  return (
+    <section className="chat-card" aria-label="Military code matches">
+      <h3 className="chat-card-title">Military code matches</h3>
+      <ul className="chat-saved-list">
+        {data.results.slice(0, 5).map((m) => (
+          <li key={m.id}>
+            <strong>{`${militaryName(m)}, ${m.title}`}</strong>
+            {m.active ? null : <span className="chat-facts">{" (retired code)"}</span>}
+            <p className="chat-facts">
+              {m.roles.length > 0
+                ? `O*NET matches: ${m.roles.map((r) => r.title).join(", ")}`
+                : `No civilian match${m.otherLinks.length > 0 ? `. O*NET lists it as ${m.otherLinks.join(", ")}` : ""}`}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <p className="chat-source">Source: O*NET Military Crosswalk</p>
     </section>
   );
 }

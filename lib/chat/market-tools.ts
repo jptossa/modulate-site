@@ -6,11 +6,13 @@ import type { Trend } from "@/components/ds";
 import { areaMarket, areaRef, searchAreas, withLocalFigures } from "@/lib/market/area-queries";
 import { comparePay } from "@/lib/market/compare";
 import { adjacentRoutes, occupationSeries, occupationTitle, skillGap } from "@/lib/market/queries";
+import { searchMilitary } from "@/lib/military/queries";
 import type {
   AdjacentRolesOutput,
   AreaRef,
   MarketTrendOutput,
   SearchAreasOutput,
+  SearchMilitaryOutput,
   SearchOccupationsOutput,
   SkillGapOutput,
   ToolError,
@@ -68,6 +70,30 @@ export function marketTools(db: SupabaseClient, defaultArea: AreaRef | null = nu
         const fallback = await q.order("title").limit(8);
         if (fallback.error) return { error: "Occupation search failed." };
         return { query, results: (fallback.data ?? []).map((r) => ({ soc: r.soc_code, title: r.title })) };
+      },
+    }),
+
+    search_military: tool({
+      description:
+        "Find a military occupation by its code or title (Army MOS \"68W\", Navy rating \"HM\", Air Force \"3D0X2\", Marine MOS \"0311\", Coast Guard or Space Force codes, or \"combat medic\"), best match first, with the civilian roles O*NET links it to. Use it whenever the user gives a military code, rate, MOS or job. Each role's soc is a valid input for adjacent_roles and skill_gap. A code with no roles is a military-only job (such as infantry) that O*NET has no civilian match for: say so, and offer to start from what they did or the skills they built. Codes can be old ones, flagged active: false.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .describe("Just the code as the user wrote it, e.g. \"68W\" or \"HM\" (put the branch in branch, not here), or a job title such as \"hospital corpsman\""),
+        branch: z
+          .enum(["army", "navy", "air_force", "marine_corps", "coast_guard", "space_force"])
+          .optional()
+          .describe("Only if the user named their branch."),
+      }),
+      execute: async ({ query, branch }): Promise<SearchMilitaryOutput | ToolError> => {
+        try {
+          return { query, results: await searchMilitary(db, query, branch) };
+        } catch {
+          return { error: "Military code search is not available right now." };
+        }
       },
     }),
 

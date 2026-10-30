@@ -26,7 +26,7 @@ const MORE_ROUTES = 5;
 /** Routes charted by default, and the most the design system can draw (it has three route identities). */
 const DEFAULT_CHARTED = 3;
 
-async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: string, label: string): Promise<LandingOrigin | null> {
+export async function buildOrigin(db: ReturnType<typeof createPublicClient>, soc: string, label: string): Promise<LandingOrigin | null> {
   const adjacent = await adjacentRoutes(db, soc, CANDIDATES);
   if (!adjacent) return null;
 

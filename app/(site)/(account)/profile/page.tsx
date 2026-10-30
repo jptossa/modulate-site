@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CurrentRoleForm, DisplayNameForm, SkillsEditor } from "@/components/account/ProfileForms";
+import { CurrentRoleForm, DisplayNameForm, MilitaryForm, SkillsEditor } from "@/components/account/ProfileForms";
 import { AreaPicker } from "@/components/area/AreaPicker";
 import { requireUser } from "@/lib/auth";
 import type { AreaKind } from "@/lib/chat/types";
+import { militaryById } from "@/lib/military/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Your profile" };
@@ -43,6 +44,10 @@ async function ProfileSections() {
     );
   }
 
+  // Read apart from the profile so the page still loads before the military migration is applied.
+  const militaryRow = await supabase.from("profiles").select("military_id").eq("id", user.id).maybeSingle();
+  const military = militaryRow.data?.military_id ? await militaryById(supabase, militaryRow.data.military_id).catch(() => null) : null;
+
   const current = profile.data?.current as unknown as { soc_code: string; title: string } | null | undefined;
   const area = profile.data?.area as unknown as { area_code: string; name: string; kind: AreaKind } | null | undefined;
   const skillItems =(skills.data ?? []).map((s) => ({
@@ -65,6 +70,14 @@ async function ProfileSections() {
           Where you are today
         </h2>
         <CurrentRoleForm current={current ? { soc: current.soc_code, title: current.title } : null} />
+      </section>
+
+      <section aria-labelledby="military-title">
+        <h2 id="military-title" className="type-card-title" style={{ color: "var(--ink)" }}>
+          Military service
+        </h2>
+        <p className="hint">Optional. Finds the civilian roles O*NET matches to your code, which you can start your routes from.</p>
+        <MilitaryForm current={military} />
       </section>
 
       <section aria-labelledby="place-title">
