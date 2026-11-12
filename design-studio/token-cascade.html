@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Cascade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link id="tokens-link" rel="stylesheet" href="tokens.css">
+<style>
+  /* Tool chrome: private --ui-* variables so editing tokens never breaks the editor itself */
+  :root {
+    --ui-bg: #f1f3f7; --ui-panel: #ffffff; --ui-text: #151a24; --ui-muted: #5b6577;
+    --ui-border: #d9dee7; --ui-accent: #4f46e5; --ui-accent-text: #ffffff; --ui-edited: #fff4d6;
+  }
+  :root[data-theme="dark"] {
+    --ui-bg: #0b0d12; --ui-panel: #14171e; --ui-text: #e6e8ec; --ui-muted: #98a2b3;
+    --ui-border: #2a303b; --ui-accent: #8b85f0; --ui-accent-text: #0f1117; --ui-edited: #3a3014;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ui-bg); color: var(--ui-text);
+    font: 14px/1.45 "Instrument Sans", system-ui, sans-serif; }
+  header.bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 12px;
+    align-items: center; padding: 12px 24px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-border); }
+  header.bar h1 { font-size: 16px; margin: 0 auto 0 0; font-weight: 600; }
+  header.bar h1 small { color: var(--ui-muted); font-weight: 400; margin-left: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--ui-border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--ui-text); padding: 7px 14px; cursor: pointer; font: inherit; }
+  .seg button[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-accent-text); }
+  .btn { border: 1px solid var(--ui-border); background: var(--ui-panel); color: var(--ui-text);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font: inherit; }
+  .btn.primary { background: var(--ui-accent); color: var(--ui-accent-text); border-color: var(--ui-accent); }
+  .btn:focus-visible, .seg button:focus-visible, input:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+  #status { color: var(--ui-muted); min-width: 120px; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; padding: 24px; align-items: start; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } }
+  .panel { background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: 12px; }
+  .panel > h2 { margin: 0; padding: 12px 16px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ui-muted); border-bottom: 1px solid var(--ui-border); }
+  .preview-wrap { position: sticky; top: 72px; }
+  @media (max-width: 960px) { .preview-wrap { position: static; } }
+
+  .group h3 { margin: 0; padding: 10px 16px; font-size: 13px; background: var(--ui-bg); display: flex; justify-content: space-between;
+    border-bottom: 1px solid var(--ui-border); border-top: 1px solid var(--ui-border); }
+  .group h3 span { color: var(--ui-muted); font-weight: 400; }
+  .row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(150px, 1.1fr) 96px; gap: 12px; align-items: center;
+    padding: 8px 16px; border-bottom: 1px solid var(--ui-border); }
+  .row.edited { background: var(--ui-edited); }
+  .row code { font: 12px ui-monospace, Consolas, monospace; word-break: break-all; }
+  .val { display: flex; gap: 6px; align-items: center; }
+  .val input[type=text] { flex: 1; min-width: 0; font: 12px ui-monospace, Consolas, monospace; padding: 6px 8px;
+    border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-bg); color: var(--ui-text); }
+  .val input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--ui-border); border-radius: 6px; background: none; cursor: pointer; }
+  .reset { border: 0; background: none; color: var(--ui-muted); cursor: pointer; font-size: 14px; visibility: hidden; padding: 2px 4px; }
+  .row.edited .reset { visibility: visible; }
+  .sample { display: flex; align-items: center; min-height: 32px; overflow: hidden; color: var(--ui-text); }
+  .s-swatch { width: 44px; height: 24px; border-radius: 6px; border: 1px solid var(--ui-border); }
+  .s-bar { height: 10px; background: var(--ui-accent); border-radius: 2px; max-width: 96px; }
+  .s-radius { width: 36px; height: 36px; border: 2px solid var(--ui-accent); background: var(--ui-bg); }
+  .s-shadow { width: 44px; height: 28px; border-radius: 6px; background: #fff; }
+  .s-border { width: 60px; border-top-style: solid; border-top-color: var(--ui-accent); }
+  .error { padding: 24px; color: #b42318; }
+  .error code { background: var(--ui-bg); padding: 2px 6px; border-radius: 4px; }
+
+  /* ============ Sample interface: ONLY var(--token) references ============ */
+  .ui { background: var(--color-background); color: var(--color-text); font-family: var(--font-family-body);
+    font-size: var(--font-size-base); line-height: var(--line-height-body); letter-spacing: var(--letter-spacing-normal);
+    font-weight: var(--font-weight-body); padding: var(--space-8); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .ui h1 { font-family: var(--font-family-heading); font-size: var(--font-size-3xl); font-weight: var(--font-weight-heading);
+    line-height: var(--line-height-heading); letter-spacing: var(--letter-spacing-heading); margin: 0 0 var(--space-3); }
+  .ui h2 { font-family: var(--font-family-heading); font-size: var(--font-size-xl); font-weight: var(--font-weight-heading);
+    line-height: var(--line-height-heading); letter-spacing: var(--letter-spacing-heading); margin: 0; }
+  .ui p { margin: 0 0 var(--space-6); color: var(--color-muted); }
+  .ui .card { background: var(--color-surface); border: var(--border-width-default) solid var(--color-border);
+    border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-md);
+    display: flex; flex-direction: column; gap: var(--space-4); }
+  .ui .badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .ui .badge { display: inline-block; background: var(--color-primary); color: var(--color-on-primary);
+    border-radius: var(--radius-full); padding: var(--space-1) var(--space-3); font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-label); text-transform: uppercase; letter-spacing: var(--letter-spacing-caps); }
+  .ui .badge.success { background: var(--color-success); color: var(--color-surface); }
+  .ui .badge.warning { background: var(--color-warning); color: var(--color-surface); }
+  .ui .badge.error { background: var(--color-error); color: var(--color-surface); }
+  .ui .badge.info { background: var(--color-info); color: var(--color-surface); }
+  .ui label { font-weight: var(--font-weight-label); font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: var(--space-2); }
+  .ui input { font: inherit; font-weight: var(--font-weight-body); color: var(--color-text); background: var(--color-surface);
+    border: var(--border-width-default) solid var(--color-muted); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); }
+  .ui input::placeholder { color: var(--color-muted); }
+  .ui input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 var(--border-width-focus) var(--color-primary); }
+  .ui .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .ui button { font: inherit; font-weight: var(--font-weight-button); letter-spacing: var(--letter-spacing-normal);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-6); cursor: pointer;
+    border: var(--border-width-default) solid var(--color-primary); }
+  .ui .btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
+  .ui .btn-secondary { background: var(--color-surface); color: var(--color-primary); }
+  .ui button:focus-visible { outline: var(--border-width-focus) solid var(--color-accent); outline-offset: var(--border-width-emphasis); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Token Cascade <small>tokens.css → live</small></h1>
+  <span id="status" role="status" aria-live="polite"></span>
+  <div class="seg" role="group" aria-label="Theme">
+    <button type="button" data-theme-btn="light" aria-pressed="true">Light</button>
+    <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
+  </div>
+  <button type="button" class="btn" id="resetAll">Reset all</button>
+  <button type="button" class="btn primary" id="copy">Copy edited as CSS</button>
+</header>
+
+<main>
+  <section class="panel" aria-labelledby="tt">
+    <h2 id="tt">Tokens</h2>
+    <div id="table"></div>
+  </section>
+
+  <div class="preview-wrap">
+    <section class="panel" aria-labelledby="pt">
+      <h2 id="pt">Sample interface</h2>
+      <div class="ui">
+        <h1>Reshape your career track</h1>
+        <p>Every value on this card is a var(--token). Edit a token on the left and watch it cascade.</p>
+        <div class="card">
+          <div class="badges">
+            <span class="badge">New</span>
+            <span class="badge success">Success</span>
+            <span class="badge warning">Warning</span>
+            <span class="badge error">Error</span>
+            <span class="badge info">Info</span>
+          </div>
+          <h2>Tailor your resume</h2>
+          <label>Target role
+            <input type="text" placeholder="e.g. Product designer">
+          </label>
+          <div class="actions">
+            <button type="button" class="btn-primary">Get started</button>
+            <button type="button" class="btn-secondary">Learn more</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const link = document.getElementById('tokens-link');
+  const table = document.getElementById('table');
+  const status = document.getElementById('status');
+
+  let light = {}, dark = {};          // defaults read from tokens.css
+  const edits = { shared: {}, light: {}, dark: {} };
+  let theme = 'light';
+  const rows = {};                    // name -> {row, text, picker}
+
+  const isHex = v => /^#[0-9a-f]{6}$/i.test(v);
+  const say = (m) => { status.textContent = m; clearTimeout(say.t); say.t = setTimeout(() => status.textContent = '', 2500); };
+
+  function readTokens() {
+    const sheet = link.sheet;
+    const rules = sheet.cssRules; // throws SecurityError on file:// in some browsers
+    for (const rule of rules) {
+      if (!(rule instanceof CSSStyleRule)) continue;
+      const sel = rule.selectorText.trim();
+      const target = /data-theme\s*=\s*["']?dark/.test(sel) ? dark : sel === ':root' ? light : null;
+      if (!target) continue;
+      for (const name of rule.style) if (name.startsWith('--')) target[name] = rule.style.getPropertyValue(name).trim();
+    }
+  }
+
+  const themed = name => name in dark;
+  const bucket = name => themed(name) ? edits[theme] : edits.shared;
+  const computed = name => getComputedStyle(root).getPropertyValue(name).trim();
+
+  function applyAll() {
+    for (const name in light) root.style.removeProperty(name);
+    for (const [n, v] of Object.entries({ ...edits.shared, ...edits[theme] })) root.style.setProperty(n, v);
+    refresh();
+  }
+
+  function refresh() {
+    for (const name in rows) {
+      const { row, text, picker } = rows[name];
+      const v = computed(name);
+      if (document.activeElement !== text) text.value = v;
+      if (picker) { picker.hidden = !isHex(v); if (isHex(v)) picker.value = v; }
+      row.classList.toggle('edited', name in bucket(name));
+    }
+  }
+
+  function setToken(name, value) {
+    const b = bucket(name);
+    if (value === '' || value === defaultFor(name)) { delete b[name]; root.style.removeProperty(name); }
+    else { b[name] = value; root.style.setProperty(name, value); }
+    // refresh all rows' edited state without stealing focus from the text field
+    refresh();
+  }
+  const defaultFor = name => (theme === 'dark' && name in dark) ? dark[name] : light[name];
+
+  function sampleFor(name, group) {
+    const el = document.createElement('div');
+    el.className = 'sample';
+    const v = `var(${name})`;
+    const inner = (cls, style, html = '') => { el.innerHTML = `<div class="${cls}" style="${style}">${html}</div>`; };
+    if (group === 'color') inner('s-swatch', `background:${v}`);
+    else if (group === 'space') inner('s-bar', `width:${v}`);
+    else if (group === 'radius') inner('s-radius', `border-radius:${v}`);
+    else if (group === 'shadow') inner('s-shadow', `box-shadow:${v}`);
+    else if (group === 'border') inner('s-border', `border-top-width:${v}`);
+    else if (name.includes('font-size')) inner('', `font-size:${v};line-height:1`, 'Aa');
+    else if (name.includes('font-family')) inner('', `font-family:${v};font-size:20px`, 'Aa Gg');
+    else if (name.includes('font-weight')) inner('', `font-weight:${v};font-size:18px`, 'Aa Gg');
+    else if (name.includes('line-height')) inner('', `line-height:${v};font-size:11px`, 'Line one<br>Line two');
+    else if (name.includes('letter-spacing')) inner('', `letter-spacing:${v};font-size:13px;font-weight:600`, 'SPACING');
+    return el;
+  }
+
+  function build() {
+    const groups = {};
+    for (const name of Object.keys(light)) (groups[name.slice(2).split('-')[0]] ||= []).push(name);
+    for (const [group, names] of Object.entries(groups)) {
+      const g = document.createElement('div');
+      g.className = 'group';
+      g.innerHTML = `<h3>${group}<span>${names.length}</span></h3>`;
+      for (const name of names) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const code = document.createElement('code'); code.textContent = name;
+        const val = document.createElement('div'); val.className = 'val';
+        const text = document.createElement('input');
+        text.type = 'text'; text.spellcheck = false; text.setAttribute('aria-label', `${name} value`);
+        const picker = document.createElement('input');
+        picker.type = 'color'; picker.setAttribute('aria-label', `${name} color picker`);
+        const reset = document.createElement('button');
+        reset.className = 'reset'; reset.type = 'button'; reset.title = 'Reset'; reset.textContent = '↺';
+        reset.setAttribute('aria-label', `Reset ${name}`);
+        text.addEventListener('input', () => setToken(name, text.value.trim()));
+        text.addEventListener('blur', refresh);
+        picker.addEventListener('input', () => { text.value = picker.value; setToken(name, picker.value); });
+        reset.addEventListener('click', () => { delete bucket(name)[name]; applyAll(); });
+        val.append(picker, text, reset);
+        if (group !== 'color') picker.remove();
+        row.append(code, val, sampleFor(name, group));
+        g.append(row);
+        rows[name] = { row, text, picker: group === 'color' ? picker : null };
+      }
+      table.append(g);
+    }
+  }
+
+  function toCss() {
+    const block = (sel, obj) => Object.keys(obj).length
+      ? `${sel} {\n${Object.entries(obj).map(([k, v]) => `  ${k}: ${v};`).join('\n')}\n}\n` : '';
+    return [block(':root', { ...edits.shared, ...edits.light }), block('[data-theme="dark"]', edits.dark)].filter(Boolean).join('\n');
+  }
+
+  async function copy() {
+    const css = toCss();
+    if (!css) return say('No edits to copy yet');
+    try { await navigator.clipboard.writeText(css); }
+    catch {
+      const ta = document.createElement('textarea'); ta.value = css; document.body.append(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    say('Copied edited tokens as CSS');
+  }
+
+  function setTheme(t) {
+    theme = t; root.dataset.theme = t;
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeBtn === t));
+    applyAll();
+  }
+
+  function init() {
+    try { readTokens(); }
+    catch (e) {
+      table.innerHTML = `<div class="error"><strong>Couldn't read tokens.css.</strong> Browsers block reading stylesheet rules when a page is opened from <code>file://</code>. Serve this folder instead, e.g. <code>python -m http.server</code> or <code>npx serve</code>, then open <code>http://localhost:8000/token-cascade.html</code>.</div>`;
+      return;
+    }
+    if (!Object.keys(light).length) { table.innerHTML = '<div class="error">No custom properties found in tokens.css.</div>'; return; }
+    build(); refresh();
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeBtn)));
+    document.getElementById('copy').addEventListener('click', copy);
+    document.getElementById('resetAll').addEventListener('click', () => {
+      edits.shared = {}; edits.light = {}; edits.dark = {}; applyAll(); say('All edits reset');
+    });
+  }
+
+  if (document.readyState === 'complete') init(); else window.addEventListener('load', init);
+})();
+</script>
+</body>
+</html>

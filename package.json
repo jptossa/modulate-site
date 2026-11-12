@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "tokens": "node scripts/build-tokens.mjs",
+    "studio": "node design-studio/serve.mjs",
     "typecheck": "tsc --noEmit",
     "ingest:onet": "node --env-file=.env scripts/ingest/onet.mjs",
     "ingest:bls": "node --no-warnings --env-file=.env scripts/ingest/bls.mjs",

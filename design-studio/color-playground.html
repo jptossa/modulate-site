@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Color Playground</title>
+<script>
+  // Start in the OS color scheme; the Light / Dark toggle takes over from there.
+  try {
+    document.documentElement.dataset.theme =
+      matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } catch (e) { document.documentElement.dataset.theme = "light"; }
+</script>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --surface: #ffffff;
+    --text: #1d1b1a;
+    --muted: #6b6560;
+    --line: #e4e0da;
+    --accent: #3b5bdb;
+    --pass: #2b8a3e;
+    --pass-bg: #ebfbee;
+    --fail: #c92a2a;
+    --fail-bg: #fff0f0;
+    --accent-ink: #ffffff;
+    --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  /* The page chrome follows the Light / Dark toggle (set from JS, starting from the OS setting). */
+  :root[data-theme="dark"] {
+    --bg: #141312;
+    --surface: #1d1b1a;
+    --text: #f1eeea;
+    --muted: #a39d96;
+    --line: #35312e;
+    --accent: #8fa5ff;
+    --accent-ink: #141312;
+    --pass: #69db7c;
+    --pass-bg: #14301b;
+    --fail: #ff8787;
+    --fail-bg: #3a1c1c;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ui-font);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  .page-head {
+    position: sticky; top: 0; z-index: 10; background: var(--bg);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 8px 0; margin-bottom: 8px;
+  }
+  .page-title {
+    font-size: 14px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); margin: 0;
+  }
+  .seg {
+    display: inline-flex; border: 1px solid var(--line); border-radius: 8px;
+    overflow: hidden; background: var(--surface); flex: none;
+  }
+  .seg button {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 6px 16px;
+    border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  h2.panel-title {
+    font-size: 13px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 4px;
+  }
+  .panel-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  section.panel { margin-top: 16px; }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px 24px;
+  }
+  .control label, .control .label {
+    display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;
+  }
+  .picker { display: flex; gap: 10px; align-items: center; }
+  input[type=color] {
+    width: 56px; height: 40px; padding: 2px; cursor: pointer;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .picker output { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  select {
+    font: inherit; font-size: 14px; padding: 8px 10px; width: 100%;
+    color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  /* Swatches */
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 12px;
+  }
+  .swatch {
+    font: inherit; color: inherit; text-align: left; cursor: pointer;
+    background: none; border: 0; padding: 0; min-width: 0;
+  }
+  .chip {
+    display: block; height: 72px; border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  }
+  .swatch.big .chip { height: 96px; }
+  .name {
+    display: block; margin-top: 6px; font-size: 12px; font-weight: 600;
+  }
+  .hex {
+    display: block; font-family: var(--mono); font-size: 12px; color: var(--muted);
+    text-transform: uppercase;
+  }
+  .swatch:hover .chip { border-color: var(--accent); }
+  .swatch.copied .hex { color: var(--accent); }
+
+  /* Ramp: one connected strip of ten */
+  .ramp { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 8px; }
+  .ramp .chip { height: 80px; }
+  @media (max-width: 760px) {
+    .ramp { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  }
+
+  /* Three small sets */
+  .sets {
+    display: grid; gap: 24px 32px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .set h3 {
+    font-size: 13px; font-weight: 600; margin: 0 0 2px;
+  }
+  .set p { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+  .set .swatches { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .set .chip { height: 48px; }
+  .set .name { font-weight: 400; color: var(--muted); }
+
+  /* Semantic roles, one set per mode. The sample interface reads ONLY these properties. */
+  .sample.theme-light {
+    --color-primary: #4f46e5;
+    --color-secondary: #9f46e5;
+    --color-accent: #f59e0b;
+    --color-background: #f8fafc;
+    --color-surface: #ffffff;
+    --color-text: #0f172a;
+    --color-muted: #64748b;
+    --color-border: #e2e8f0;
+    --color-success: #198754;
+    --color-warning: #b45309;
+    --color-error: #c92a2a;
+    --color-info: #2563eb;
+    --color-on-primary: #ffffff;   /* label on the primary and secondary buttons */
+    --color-on-accent: #0f172a;    /* label on the accent badge */
+  }
+  /* Dark is its own palette, not the light one inverted: dark gray background, a lighter
+     surface for raised things, off-white text, and brand colors lifted to hold contrast. */
+  .sample.theme-dark {
+    --color-primary: #8b85f0;
+    --color-secondary: #c084f0;
+    --color-accent: #f59e0b;
+    --color-background: #0f1117;
+    --color-surface: #1a1d24;
+    --color-text: #e6e8ec;
+    --color-muted: #9aa4b2;
+    --color-border: #2c313c;
+    --color-success: #4cc38a;
+    --color-warning: #f0a04b;
+    --color-error: #f87171;
+    --color-info: #6aa5f8;
+    --color-on-primary: #0f1117;
+    --color-on-accent: #0f1117;
+  }
+  .roles {
+    display: grid; gap: 12px 16px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .role {
+    display: flex; align-items: center; gap: 10px; min-width: 0;
+    padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+  }
+  .role input[type=color] { flex: none; width: 44px; height: 36px; }
+  .role label { display: block; min-width: 0; margin: 0; cursor: pointer; }
+  .role .rname { display: block; font-size: 13px; font-weight: 600; }
+  .role .rvar, .role .rhex {
+    display: block; font-family: var(--mono); font-size: 11px; color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+  .role .rtext { min-width: 0; }
+  .rlink { display: block; font-size: 11px; margin-top: 2px; color: var(--accent); }
+  .rpick { display: block; font-size: 11px; margin-top: 4px; color: var(--muted); }
+  .rpick[hidden] { display: none; }
+  .rpick button {
+    font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 4px;
+    padding: 1px 8px; border-radius: 6px;
+    color: var(--text); background: var(--surface); border: 1px solid var(--line);
+  }
+  .rpick button:hover { border-color: var(--accent); }
+  .roles-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  button.reset {
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; flex: none;
+    padding: 6px 12px; border-radius: 8px;
+    color: var(--text); background: var(--bg); border: 1px solid var(--line);
+  }
+  button.reset:hover { border-color: var(--accent); }
+  .roles-group { font-size: 12px; font-weight: 600; color: var(--muted); margin: 20px 0 8px; }
+  .roles-group:first-of-type { margin-top: 0; }
+
+  .previews {
+    margin-top: 20px; display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  }
+  .preview { margin: 0; min-width: 0; }
+  .preview-cap {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer;
+    padding: 0; margin-bottom: 8px; background: none; border: 0; color: var(--text);
+  }
+  .preview-cap .tag {
+    font-size: 11px; font-weight: 600; padding: 0 8px; border-radius: 999px;
+    color: var(--muted); border: 1px solid var(--line); visibility: hidden;
+  }
+  .preview.active .tag { visibility: visible; color: var(--accent); border-color: var(--accent); }
+  .preview.active .sample { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .preview-cap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Raised things are shown as a lighter surface, not a heavier shadow: no box-shadow here. */
+  .sample {
+    padding: 20px; border-radius: 12px;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    display: grid; gap: 20px;
+  }
+  .sample .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .sample .btn {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 10px 18px; border-radius: 8px; border: 2px solid transparent;
+  }
+  .sample .btn-primary {
+    background: var(--color-primary); color: var(--color-on-primary);
+    border-color: var(--color-primary);
+  }
+  .sample .btn-secondary {
+    background: var(--color-secondary); color: var(--color-on-primary);
+    border-color: var(--color-secondary);
+  }
+  .sample .btn-outline {
+    background: transparent; color: var(--color-secondary);
+    border-color: var(--color-secondary);
+  }
+  .sample .btn:hover { filter: brightness(.94); }
+  .sample .btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .sample .badge {
+    font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px;
+    background: var(--color-accent); color: var(--color-on-accent);
+  }
+  .sample .card {
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: 12px; padding: 16px; max-width: 520px;
+  }
+  .sample .card h3 { margin: 0 0 6px; font-size: 18px; color: var(--color-text); }
+  .sample .card p { margin: 0; font-size: 14px; color: var(--color-muted); }
+  .sample .alerts { display: grid; gap: 10px; }
+  .sample .alert {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 10px 14px; border-radius: 8px; font-size: 14px;
+    color: var(--color-text);
+    border: 1px solid var(--role);
+    background: color-mix(in srgb, var(--role) 12%, var(--color-surface));
+  }
+  .sample .alert strong { color: var(--role); }
+  .sample .alert-success { --role: var(--color-success); }
+  .sample .alert-warning { --role: var(--color-warning); }
+  .sample .alert-error   { --role: var(--color-error); }
+  .sample .alert-info    { --role: var(--color-info); }
+
+  /* Contrast checker */
+  .cc-summary { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+  .cc-wrap { overflow-x: auto; }
+  table.cc { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.cc th {
+    text-align: left; font-size: 12px; font-weight: 600; color: var(--muted);
+    padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  table.cc td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.cc tr.cc-group td {
+    font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 18px; border-bottom: 0;
+  }
+  table.cc .ratio { font-family: var(--mono); white-space: nowrap; }
+  .cc-pair { font-weight: 600; }
+  .cc-pair small { display: block; font-weight: 400; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  .cc-prev {
+    display: inline-block; min-width: 44px; text-align: center; font-weight: 700;
+    padding: 2px 8px; border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  }
+  .pill {
+    display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 9px;
+    border-radius: 999px; border: 1px solid currentColor; white-space: nowrap;
+  }
+  .pill.pass { color: var(--pass); background: var(--pass-bg); }
+  .pill.fail { color: var(--fail); background: var(--fail-bg); }
+  .cc-note { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+  @media (max-width: 560px) { .cc-hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page-head">
+    <h1 class="page-title">Color Playground</h1>
+    <div class="seg" role="group" aria-label="Mode">
+      <button type="button" data-mode="light" aria-pressed="true">Light</button>
+      <button type="button" data-mode="dark" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+
+  <div class="panel controls">
+    <div class="control">
+      <label for="base">Base color</label>
+      <div class="picker">
+        <input type="color" id="base" value="#4f46e5">
+        <output id="baseOut" for="base">#4F46E5</output>
+      </div>
+    </div>
+    <div class="control">
+      <label for="harmony">Harmony</label>
+      <select id="harmony">
+        <option value="complementary">Complementary</option>
+        <option value="analogous">Analogous</option>
+        <option value="triadic">Triadic</option>
+        <option value="split">Split complementary</option>
+      </select>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2 class="panel-title">Harmony</h2>
+    <p class="panel-note" id="harmonyNote"></p>
+    <div class="swatches" id="harmonyOut"></div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Tonal ramp</h2>
+    <p class="panel-note">50 is the lightest and 900 the darkest. 500 is the base color; lighter steps mix toward white, darker steps toward black.</p>
+    <div class="swatches ramp" id="rampOut"></div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Mixes</h2>
+    <p class="panel-note">Each set mixes the base with 20%, 40%, 60% and 80% of white, black or mid gray.</p>
+    <div class="sets">
+      <div class="set"><h3>Tints</h3><p>toward white</p><div class="swatches" id="tintsOut"></div></div>
+      <div class="set"><h3>Shades</h3><p>toward black</p><div class="swatches" id="shadesOut"></div></div>
+      <div class="set"><h3>Tones</h3><p>toward gray</p><div class="swatches" id="tonesOut"></div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="roles-head">
+      <div>
+        <h2 class="panel-title">Semantic roles · <span id="editingMode">Light roles</span></h2>
+        <p class="panel-note">Each mode has its own set of roles, stored as CSS custom properties. The Light / Dark toggle chooses which set you edit and which the contrast checker runs on. In both modes, primary, secondary and accent follow the base color and harmony (dark mode lifts them to hold contrast on dark surfaces). In light mode, editing primary moves the base color; editing secondary or accent directly holds until the base or harmony next changes. Everything else is set by hand.</p>
+      </div>
+      <button type="button" class="reset" id="resetRoles">Reset light roles</button>
+    </div>
+    <div id="rolesOut"></div>
+
+    <div class="previews">
+      <figure class="preview" id="prev-light">
+        <button type="button" class="preview-cap" data-mode="light">Light <span class="tag">editing &amp; checked</span></button>
+        <div id="slot-light"></div>
+      </figure>
+      <figure class="preview" id="prev-dark">
+        <button type="button" class="preview-cap" data-mode="dark">Dark <span class="tag">editing &amp; checked</span></button>
+        <div id="slot-dark"></div>
+      </figure>
+    </div>
+    <template id="sampleTpl">
+      <div class="sample" aria-label="Sample interface">
+        <div class="row">
+          <button type="button" class="btn btn-primary">Primary</button>
+          <button type="button" class="btn btn-secondary">Secondary</button>
+          <button type="button" class="btn btn-outline">Outline</button>
+          <span class="badge">New</span>
+        </div>
+        <div class="card">
+          <h3>Card heading</h3>
+          <p>This card is raised by a lighter surface color, not a shadow. Its heading uses the text color and this paragraph uses the muted text color.</p>
+        </div>
+        <div class="alerts">
+          <div class="alert alert-success" role="status"><strong>Success</strong> Your changes have been saved.</div>
+          <div class="alert alert-warning" role="status"><strong>Warning</strong> Your trial ends in three days.</div>
+          <div class="alert alert-error" role="alert"><strong>Error</strong> We couldn't process your payment.</div>
+          <div class="alert alert-info" role="status"><strong>Info</strong> A new version is available.</div>
+        </div>
+      </div>
+    </template>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Contrast checker · <span id="ccMode">Light mode</span></h2>
+    <p class="panel-note">WCAG contrast ratios for the color pairs in the sample interface, for whichever mode is selected in the Light / Dark toggle. It re-checks whenever a role changes.</p>
+    <p class="cc-summary" id="ccSummary" aria-live="polite"></p>
+    <div class="cc-wrap">
+      <table class="cc">
+        <thead>
+          <tr>
+            <th scope="col">Pair</th>
+            <th scope="col" class="cc-hide-sm">Preview</th>
+            <th scope="col">Ratio</th>
+            <th scope="col">Normal text</th>
+            <th scope="col">Large text</th>
+          </tr>
+        </thead>
+        <tbody id="ccText"></tbody>
+      </table>
+    </div>
+    <div class="cc-wrap">
+      <table class="cc">
+        <thead>
+          <tr>
+            <th scope="col">UI part (needs 3:1)</th>
+            <th scope="col">Ratio</th>
+            <th scope="col">Result</th>
+          </tr>
+        </thead>
+        <tbody id="ccUi"></tbody>
+      </table>
+    </div>
+    <p class="cc-note">Normal text: AA 4.5:1, AAA 7:1. Large text (24px regular or 19px bold and up): AA 3:1, AAA 4.5:1. A red Fail means below AA.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- color math ----------
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgbToHex(rgb) {
+    return "#" + rgb.map((v) => Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16).padStart(2, "0")).join("");
+  }
+  function rgbToHsl([r, g, b]) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    const l = (max + min) / 2;
+    let h = 0, s = 0;
+    if (d !== 0) {
+      s = d / (1 - Math.abs(2 * l - 1));
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return [h, s, l];
+  }
+  function hslToRgb([h, s, l]) {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+  }
+  function rotateHue(hex, deg) {
+    const [h, s, l] = rgbToHsl(hexToRgb(hex));
+    return rgbToHex(hslToRgb([((h + deg) % 360 + 360) % 360, s, l]));
+  }
+  // Linear mix in sRGB: t = 0 returns `hex`, t = 1 returns `target`.
+  function mix(hex, target, t) {
+    const a = hexToRgb(hex), b = hexToRgb(target);
+    return rgbToHex(a.map((v, i) => v + (b[i] - v) * t));
+  }
+
+  // ---------- palettes ----------
+  const HARMONIES = {
+    complementary: { label: "Complementary", items: [["Complement", 180]] },
+    analogous:     { label: "Analogous", items: [["Analogous −30°", -30], ["Analogous +30°", 30]] },
+    triadic:       { label: "Triadic", items: [["Triadic +120°", 120], ["Triadic +240°", 240]] },
+    split:         { label: "Split complementary", items: [["Split +150°", 150], ["Split +210°", 210]] }
+  };
+  const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+  const AMOUNTS = [0.2, 0.4, 0.6, 0.8];
+
+  function ramp(base) {
+    return STEPS.map((step) => {
+      if (step === 500) return [String(step), base];            // exactly the base
+      if (step < 500) return [String(step), mix(base, "#ffffff", (500 - step) / 500)];
+      return [String(step), mix(base, "#000000", (step - 500) / 500)];
+    });
+  }
+  const set = (base, target) =>
+    AMOUNTS.map((t) => [Math.round(t * 100) + "%", mix(base, target, t)]);
+
+  // ---------- rendering ----------
+  function swatch(name, hex, big) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatch" + (big ? " big" : "");
+    b.title = "Copy " + hex.toUpperCase();
+    b.innerHTML = '<span class="chip"></span><span class="name"></span><span class="hex"></span>';
+    b.querySelector(".chip").style.background = hex;
+    b.querySelector(".name").textContent = name;
+    b.querySelector(".hex").textContent = hex;
+    b.addEventListener("click", () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(hex).catch(() => {});
+      const hexEl = b.querySelector(".hex");
+      hexEl.textContent = "Copied";
+      b.classList.add("copied");
+      setTimeout(() => { hexEl.textContent = hex; b.classList.remove("copied"); }, 900);
+    });
+    return b;
+  }
+  function fill(id, list, big) {
+    const el = $(id);
+    el.replaceChildren(...list.map(([n, h]) => swatch(n, h, big)));
+  }
+
+  function render() {
+    const base = $("base").value.toLowerCase();
+    const h = HARMONIES[$("harmony").value];
+    $("baseOut").textContent = base.toUpperCase();
+    $("harmonyNote").textContent = h.label + " — hues rotated around the color wheel from the base.";
+
+    fill("harmonyOut",
+      [["Base", base]].concat(h.items.map(([n, deg]) => [n, rotateHue(base, deg)])), true);
+    fill("rampOut", ramp(base));
+    fill("tintsOut", set(base, "#ffffff"));
+    fill("shadesOut", set(base, "#000000"));
+    fill("tonesOut", set(base, "#808080"));
+    syncRoles();
+  }
+
+  // The first user change is what starts driving the linked roles (see syncRoles).
+  $("base").addEventListener("input", () => { started = true; render(); });
+  $("harmony").addEventListener("change", () => { started = true; render(); });
+  // The first render() call is at the end of the script, once the roles exist.
+
+  // ---------- semantic roles: one palette per mode ----------
+  const MODES = ["light", "dark"];
+  const ROLE_GROUPS = [
+    ["Brand", [["primary", "Primary"], ["secondary", "Secondary"], ["accent", "Accent"]]],
+    ["Neutral", [["background", "Background"], ["surface", "Surface"], ["text", "Text"],
+                 ["muted", "Muted text"], ["border", "Border"]]],
+    ["Feedback", [["success", "Success"], ["warning", "Warning"], ["error", "Error"], ["info", "Info"]]],
+    ["Button labels", [["on-primary", "Label on primary & secondary"], ["on-accent", "Label on accent"]]]
+  ];
+  const roleKeys = ROLE_GROUPS.flatMap(([, list]) => list.map(([k]) => k));
+  // Primary, secondary and accent follow the base color and harmony above, in both modes.
+  // Neutrals, feedback colors and labels stay hand-set: they shouldn't shift with the brand hue.
+  const LINKED = ["primary", "secondary", "accent"];
+  const root = document.documentElement;
+
+  // Build the same sample interface once per mode from the <template>.
+  const previews = {};
+  MODES.forEach((m) => {
+    const frag = $("sampleTpl").content.cloneNode(true);
+    const el = frag.querySelector(".sample");
+    el.classList.add("theme-" + m);
+    $("slot-" + m).appendChild(frag);
+    previews[m] = el;
+  });
+  const readVar = (m, k) =>
+    getComputedStyle(previews[m]).getPropertyValue("--color-" + k).trim().toLowerCase();
+
+  // Starting values are read from the CSS (.sample.theme-light / .sample.theme-dark).
+  const defaults = {}, palettes = {}, sources = { light: {}, dark: {} };
+  MODES.forEach((m) => {
+    defaults[m] = Object.fromEntries(roleKeys.map((k) => [k, readVar(m, k)]));
+    palettes[m] = Object.assign({}, defaults[m]);
+  });
+
+  let active = root.dataset.theme === "dark" ? "dark" : "light";   // mode being edited and checked
+  // Until the base or harmony is first changed, the linked roles keep their starting values.
+  let started = false;
+
+  function luminance(hex) {
+    const c = hexToRgb(hex).map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function contrast(a, b) {
+    const la = luminance(a), lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  // Dark-mode version of a brand color: same hue, a little softer, and lifted just far
+  // enough to hold DARK_MIN:1 contrast against the dark surface.
+  const DARK_MIN = 5;
+  function darkBrand(hex, surface) {
+    const [h, s0, l0] = rgbToHsl(hexToRgb(hex));
+    const s = Math.min(s0, 0.8);
+    let l = l0;
+    const make = () => rgbToHex(hslToRgb([h, s, l]));
+    while (contrast(make(), surface) < DARK_MIN && l < 0.9) l += 0.01;
+    return make();
+  }
+
+  // Light and dark values (with a label saying where each comes from) for the linked roles.
+  function paletteRoles() {
+    const base = $("base").value.toLowerCase();
+    const items = HARMONIES[$("harmony").value].items;
+    const cols = items.map(([, deg]) => rotateHue(base, deg));
+    const lift = (hex) => darkBrand(hex, palettes.dark.surface);
+    if (cols.length === 1) {
+      // One harmony color: it becomes the accent; secondary is a variant of the base.
+      const step = (n) => ramp(base).find(([s]) => s === n)[1];
+      return {
+        light: {
+          primary: [base, "Base color"],
+          secondary: [step("700"), "Base, step 700"],
+          accent: [cols[0], items[0][0]]
+        },
+        dark: {
+          primary: [lift(base), "Base color, lightened"],
+          secondary: [step("200"), "Base, step 200"],
+          accent: [lift(cols[0]), items[0][0] + ", lightened"]
+        }
+      };
+    }
+    return {
+      light: {
+        primary: [base, "Base color"],
+        secondary: [cols[0], items[0][0]],
+        accent: [cols[1], items[1][0]]
+      },
+      dark: {
+        primary: [lift(base), "Base color, lightened"],
+        secondary: [lift(cols[0]), items[0][0] + ", lightened"],
+        accent: [lift(cols[1]), items[1][0] + ", lightened"]
+      }
+    };
+  }
+  function updateLinks() {
+    LINKED.forEach((k) => {
+      const el = $("link-" + k);
+      if (el) el.textContent = started ? "Follows: " + (sources[active][k] || "") : "Starting value";
+    });
+  }
+  function syncRoles(modes) {
+    const p = paletteRoles();
+    (modes || MODES).forEach((m) => LINKED.forEach((k) => {
+      sources[m][k] = p[m][k][1];
+      if (started) setRole(m, k, p[m][k][0]);
+    }));
+    updateLinks();
+  }
+
+  // ---------- contrast checker (runs on the active mode) ----------
+  const role = (k) => () => palettes[active][k];
+  // Alert banners tint their role color 12% over the surface (see .alert in the CSS).
+  const tinted = (k) => () => mix(palettes[active].surface, palettes[active][k], 0.12);
+  const FEEDBACK = ["success", "warning", "error", "info"];
+  const cap = (s) => s[0].toUpperCase() + s.slice(1);
+  const TEXT_GROUPS = [
+    [null, [
+      ["Text on background", role("text"), role("background")],
+      ["Text on surface", role("text"), role("surface")],
+      ["Muted text on surface", role("muted"), role("surface")],
+      ["Label on primary", role("on-primary"), role("primary")],
+      ["Label on secondary", role("on-primary"), role("secondary")],
+      ["Label on accent", role("on-accent"), role("accent")]
+    ].concat(FEEDBACK.map((k) => ["Label on " + k, role("on-primary"), role(k)]))],
+    ["Also in the sample", [
+      ["Secondary on background", role("secondary"), role("background")]
+    ].concat(FEEDBACK.map((k) => [cap(k) + " label on its banner", role(k), tinted(k)]))]
+  ];
+  const UI_PAIRS = [
+    ["Border on surface", role("border"), role("surface")],
+    ["Primary on background", role("primary"), role("background")]
+  ];
+
+  // Ratios are truncated, not rounded, so 4.497 never displays as a passing 4.50.
+  const fmt = (r) => (Math.floor(r * 100) / 100).toFixed(2) + ":1";
+  function level(r, aa, aaa) { return r >= aaa ? "AAA" : r >= aa ? "AA" : "Fail"; }
+  function pill(text, ok) {
+    const s = document.createElement("span");
+    s.className = "pill " + (ok ? "pass" : "fail");
+    s.textContent = text;
+    return s;
+  }
+  function cell(tr, content, cls) {
+    const td = document.createElement("td");
+    if (cls) td.className = cls;
+    if (typeof content === "string") td.textContent = content; else td.appendChild(content);
+    tr.appendChild(td);
+    return td;
+  }
+  function pairName(label, fg, bg) {
+    const d = document.createElement("div");
+    d.className = "cc-pair";
+    d.textContent = label;
+    const s = document.createElement("small");
+    s.textContent = fg.toUpperCase() + " on " + bg.toUpperCase();
+    d.appendChild(s);
+    return d;
+  }
+
+  function renderContrast() {
+    const tbody = $("ccText");
+    let total = 0, passing = 0;
+    const rows = [];
+    TEXT_GROUPS.forEach(([title, pairs]) => {
+      if (title) {
+        const tr = document.createElement("tr");
+        tr.className = "cc-group";
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = title;
+        tr.appendChild(td);
+        rows.push(tr);
+      }
+      pairs.forEach(([label, getFg, getBg]) => {
+        const fg = getFg(), bg = getBg(), r = contrast(fg, bg);
+        const normal = level(r, 4.5, 7), large = level(r, 3, 4.5);
+        total++; if (normal !== "Fail") passing++;
+        const tr = document.createElement("tr");
+        cell(tr, pairName(label, fg, bg));
+        const prev = document.createElement("span");
+        prev.className = "cc-prev"; prev.textContent = "Aa";
+        prev.style.color = fg; prev.style.background = bg;
+        cell(tr, prev, "cc-hide-sm");
+        cell(tr, fmt(r), "ratio");
+        cell(tr, pill(normal, normal !== "Fail"));
+        cell(tr, pill(large, large !== "Fail"));
+        rows.push(tr);
+      });
+    });
+    tbody.replaceChildren(...rows);
+    $("ccMode").textContent = cap(active) + " mode";
+    $("ccSummary").textContent = passing + " of " + total + " text pairs meet AA for normal text.";
+
+    $("ccUi").replaceChildren(...UI_PAIRS.map(([label, getFg, getBg]) => {
+      const fg = getFg(), bg = getBg(), r = contrast(fg, bg), ok = r >= 3;
+      const tr = document.createElement("tr");
+      cell(tr, pairName(label, fg, bg));
+      cell(tr, fmt(r), "ratio");
+      cell(tr, pill(ok ? "Pass" : "Fail", ok));
+      return tr;
+    }));
+  }
+
+  // Set one role in one mode. The CSS custom property lives on that mode's sample, so
+  // everything in it that uses the role updates immediately.
+  function setRole(m, k, hex) {
+    palettes[m][k] = hex;
+    previews[m].style.setProperty("--color-" + k, hex);
+    if (m !== active) return;
+    const input = $("role-" + k);
+    if (input.value !== hex) input.value = hex;
+    $("hex-" + k).textContent = hex.toUpperCase();
+    renderContrast();
+  }
+
+  // Switch which mode is edited and checked. The page chrome follows it too.
+  function showMode(m) {
+    active = m;
+    root.dataset.theme = m;
+    document.querySelectorAll("[data-mode]").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+    roleKeys.forEach((k) => {
+      $("role-" + k).value = palettes[m][k];
+      $("hex-" + k).textContent = palettes[m][k].toUpperCase();
+    });
+    MODES.forEach((x) => $("prev-" + x).classList.toggle("active", x === m));
+    $("editingMode").textContent = cap(m) + " roles";
+    $("resetRoles").textContent = "Reset " + m + " roles";
+    document.querySelectorAll(".rpick").forEach((el) => { el.hidden = m !== "dark"; });
+    updateLinks();
+    renderContrast();
+  }
+
+  // ---------- role editor ----------
+  const rolesOut = $("rolesOut");
+  ROLE_GROUPS.forEach(([group, list]) => {
+    const g = document.createElement("div");
+    g.className = "roles-group";
+    g.textContent = group;
+    const grid = document.createElement("div");
+    grid.className = "roles";
+    list.forEach(([k, label]) => {
+      const row = document.createElement("div");
+      row.className = "role";
+      row.innerHTML =
+        '<input type="color" id="role-' + k + '">' +
+        '<div class="rtext"><label for="role-' + k + '"><span class="rname"></span>' +
+        '<span class="rvar"></span><span class="rhex" id="hex-' + k + '"></span></label>' +
+        (LINKED.includes(k) ? '<span class="rlink" id="link-' + k + '"></span>' : "") +
+        (k === "on-primary"
+          ? '<span class="rpick" hidden>Dark mode: ' +
+            '<button type="button" data-pick="dark">Dark</button>' +
+            '<button type="button" data-pick="white">White</button></span>'
+          : "") +
+        '</div>';
+      row.querySelector(".rname").textContent = label;
+      row.querySelector(".rvar").textContent = "--color-" + k;
+      row.querySelector("input").addEventListener("input", (e) => {
+        if (active === "light" && k === "primary") {
+          // Light primary IS the base color: move the base, and the harmony and roles follow.
+          $("base").value = e.target.value;
+          started = true;
+          render();
+        } else {
+          setRole(active, k, e.target.value);   // holds until the base or harmony next changes
+        }
+      });
+      row.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () =>
+        setRole("dark", "on-primary", b.dataset.pick === "white" ? "#ffffff" : palettes.dark.background)));
+      grid.appendChild(row);
+    });
+    rolesOut.append(g, grid);
+  });
+
+  document.querySelectorAll("[data-mode]").forEach((b) =>
+    b.addEventListener("click", () => showMode(b.dataset.mode)));
+  $("resetRoles").addEventListener("click", () => {
+    roleKeys.forEach((k) => setRole(active, k, defaults[active][k]));
+    syncRoles([active]);
+  });
+
+  showMode(active);
+  render();   // first render; also derives the linked roles once the palette has been changed
+})();
+</script>
+</body>
+</html>
