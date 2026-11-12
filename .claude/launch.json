@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "design-studio",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["design-studio/serve.mjs"],
+      "port": 8765
     }
   ]
 }

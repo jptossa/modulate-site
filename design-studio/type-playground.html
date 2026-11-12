@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Type Playground</title>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --surface: #ffffff;
+    --text: #1d1b1a;
+    --muted: #6b6560;
+    --line: #e4e0da;
+    --accent: #3b5bdb;
+    --on-accent: #ffffff;
+    --danger: #c92a2a;
+    --danger-bg: #fff0f0;
+    --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    /* set from JS */
+    --font-heading: "Instrument Serif", serif;
+    --font-body: "Instrument Sans", sans-serif;
+    --w-body: 400;
+    --w-label: 500;
+    --w-subheading: 600;
+    --w-button: 600;
+    --w-heading: 700;
+    --fs-body: 16px;
+    --fs-h3: 25px;
+    --fs-h2: 31.25px;
+    --fs-h1: 39.06px;
+    --lh-heading: 1.15;
+    --lh-body: 1.5;
+    --ls-heading: -0.01em;
+    --ls-caps: 0.08em;
+    --ls-button: 0.01em;
+    --ls-body: 0em;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312;
+      --surface: #1d1b1a;
+      --text: #f1eeea;
+      --muted: #a39d96;
+      --line: #35312e;
+      --accent: #8fa5ff;
+      --on-accent: #141312;
+      --danger: #ff8787;
+      --danger-bg: #3a1c1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ui-font);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  .page-title {
+    font-size: 14px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 16px;
+  }
+  h2.panel-title {
+    font-size: 13px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 4px;
+  }
+  .panel-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+
+  /* Controls */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stack { display: grid; gap: 12px; }
+  @media (min-width: 700px) and (min-height: 760px) {
+    .stack { position: sticky; top: 8px; z-index: 5; }
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px 24px;
+  }
+  .control label, .control .label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; font-weight: 600; margin-bottom: 8px;
+  }
+  .control output { font-family: var(--mono); font-weight: 400; color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+  select, input[type=number] {
+    font: inherit; font-size: 14px; padding: 8px 10px;
+    color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  select { width: 100%; }
+  .ticks {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px;
+  }
+  .fonts { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: end; }
+  .fstatus { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 18px; }
+  .fstatus.err { color: var(--danger); }
+  button.swap {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 8px 14px; border-radius: 8px; margin-bottom: 24px;
+    color: var(--text); background: var(--bg); border: 1px solid var(--line);
+  }
+  button.swap:hover { border-color: var(--accent); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 560px) {
+    .fonts { grid-template-columns: 1fr; }
+    button.swap { margin-bottom: 0; }
+  }
+
+  /* Preview */
+  .scale { margin-top: 24px; }
+  .row {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 8px 24px;
+    padding: 20px 0;
+    border-top: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .row:last-child { border-bottom: 1px solid var(--line); }
+  .meta { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .meta strong { display: block; color: var(--text); font-size: 15px; }
+  .sample { margin: 0; overflow-wrap: anywhere; }
+  .s-h1 { font-family: var(--font-heading); font-weight: var(--w-heading); font-size: var(--fs-h1); line-height: var(--lh-heading); letter-spacing: var(--ls-heading); }
+  .s-h2 { font-family: var(--font-heading); font-weight: var(--w-heading); font-size: var(--fs-h2); line-height: var(--lh-heading); letter-spacing: var(--ls-heading); }
+  .s-h3 { font-family: var(--font-heading); font-weight: var(--w-subheading); font-size: var(--fs-h3); line-height: var(--lh-heading); letter-spacing: var(--ls-heading); }
+  .s-body { font-family: var(--font-body); font-weight: var(--w-body); font-size: var(--fs-body); line-height: var(--lh-body); letter-spacing: var(--ls-body); max-width: 62ch; }
+
+  /* Spacing + fluid panels */
+  .block { margin-top: 32px; }
+  h3.group {
+    font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); margin: 20px 0 10px;
+  }
+  h3.group:first-of-type { margin-top: 0; }
+  .demo { margin-top: 24px; }
+  .demo .row { padding: 16px 0; }
+  .d-heading {
+    margin: 0; max-width: 16ch; font-family: var(--font-heading); font-weight: var(--w-heading);
+    font-size: var(--fs-h2); line-height: var(--lh-heading); letter-spacing: var(--ls-heading);
+  }
+  .d-caps {
+    margin: 0; font-family: var(--font-body); font-weight: var(--w-label); text-transform: uppercase;
+    font-size: max(11px, calc(var(--fs-body) * 0.8)); line-height: 1.3; letter-spacing: var(--ls-caps);
+  }
+  .d-btn {
+    font-family: var(--font-body); font-weight: var(--w-button); font-size: var(--fs-body);
+    letter-spacing: var(--ls-button); line-height: 1.2;
+    background: var(--accent); color: var(--on-accent);
+    border: 0; border-radius: 8px; padding: 10px 18px; cursor: default;
+  }
+  .d-body {
+    margin: 0; max-width: 62ch; font-family: var(--font-body); font-weight: var(--w-body);
+    font-size: var(--fs-body); line-height: var(--lh-body); letter-spacing: var(--ls-body);
+  }
+  .fluid-inputs { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end; }
+  .field label, .field .label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .field .pair { display: flex; align-items: center; gap: 8px; }
+  .field input[type=number] { width: 96px; font-family: var(--mono); }
+  .field .unit { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .readouts {
+    display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 20px 0 12px;
+    font-size: 13px; color: var(--muted);
+  }
+  .readouts b { font-family: var(--mono); font-size: 15px; color: var(--text); font-weight: 600; }
+  .code-line { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .code-line code {
+    flex: 1 1 280px; min-width: 0; font-family: var(--mono); font-size: 13px; padding: 10px 12px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow-wrap: anywhere;
+  }
+  .code-line button {
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 14px; border-radius: 8px;
+    color: var(--text); background: var(--bg); border: 1px solid var(--line);
+  }
+  .code-line button:hover { border-color: var(--accent); }
+  .fluid-note { font-size: 12px; color: var(--danger); margin: 8px 0 0; min-height: 0; }
+  .fluid-sample {
+    margin: 20px 0 0; max-width: 62ch; font-family: var(--font-body); font-weight: var(--w-body);
+    line-height: var(--lh-body); letter-spacing: var(--ls-body);
+  }
+
+  /* Weight roles */
+  .roles { margin-top: 32px; }
+  .role {
+    display: grid;
+    grid-template-columns: 150px 88px minmax(0, 1fr);
+    gap: 4px 20px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+    align-items: start;
+  }
+  .role:first-of-type { border-top: 0; }
+  .role-name { font-size: 14px; font-weight: 600; }
+  .role-font { display: block; font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--muted); }
+  .role input[type=number] { width: 88px; font-family: var(--mono); }
+  .role.bad input[type=number] { border-color: var(--danger); color: var(--danger); }
+  .rs { margin: 0; font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
+  .rs.heading, .rs.subheading { font-family: var(--font-heading); }
+  .rs.body, .rs.label, .rs.button { font-family: var(--font-body); }
+  .rs.heading { font-weight: var(--w-heading); }
+  .rs.subheading { font-weight: var(--w-subheading); }
+  .rs.body { font-weight: var(--w-body); }
+  .rs.label { font-weight: var(--w-label); }
+  .rs-btn {
+    font-family: var(--font-body); font-weight: var(--w-button); font-size: 16px;
+    background: var(--accent); color: var(--on-accent);
+    border: 0; border-radius: 8px; padding: 10px 18px; cursor: default;
+  }
+  .flag {
+    display: none; margin-top: 8px; font-size: 13px; line-height: 1.4;
+    color: var(--danger); background: var(--danger-bg);
+    border-left: 3px solid var(--danger); border-radius: 4px; padding: 6px 10px;
+  }
+  .role.bad .flag { display: block; }
+  .shipped { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+  .ship-line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; }
+  .ship-line .who { min-width: 200px; font-weight: 600; }
+  .ship-line .who span { font-family: var(--mono); font-weight: 400; color: var(--muted); }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 2px 8px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+  }
+  .chip.used { border-color: var(--accent); color: var(--accent); }
+
+  @media (max-width: 560px) {
+    .row { grid-template-columns: 1fr; }
+    .meta strong { display: inline; margin-right: 8px; }
+    .role { grid-template-columns: 1fr; }
+    .ship-line .who { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1 class="page-title">Type Playground</h1></header>
+
+  <div class="stack">
+    <section class="panel controls" aria-label="Type scale controls">
+      <div class="control">
+        <label for="base">Base body size <output id="baseOut" for="base"></output></label>
+        <input id="base" type="range" min="12" max="24" step="1" value="16">
+        <div class="ticks"><span>12</span><span>24</span></div>
+      </div>
+
+      <div class="control">
+        <label for="preset">Ratio preset</label>
+        <select id="preset">
+          <option value="1.2">Minor Third 1.2</option>
+          <option value="1.25" selected>Major Third 1.25</option>
+          <option value="1.333">Perfect Fourth 1.333</option>
+          <option value="1.618">Golden Ratio 1.618</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="ratio">Custom ratio <output id="ratioOut" for="ratio"></output></label>
+        <input id="ratio" type="range" min="1.1" max="1.7" step="0.001" value="1.25">
+        <div class="ticks"><span>1.1</span><span>1.7</span></div>
+      </div>
+    </section>
+
+    <section class="panel controls fonts" aria-label="Font pickers">
+      <div class="control">
+        <label for="headingFont">Heading font</label>
+        <select id="headingFont"></select>
+        <div class="fstatus" id="headingStatus" aria-live="polite"></div>
+      </div>
+      <button type="button" class="swap" id="swap" title="Exchange the heading and body fonts">&#8644; Swap</button>
+      <div class="control">
+        <label for="bodyFont">Body font</label>
+        <select id="bodyFont"></select>
+        <div class="fstatus" id="bodyStatus" aria-live="polite"></div>
+      </div>
+    </section>
+  </div>
+
+  <main class="scale" aria-live="polite">
+    <div class="row">
+      <div class="meta"><strong>H1</strong><span id="px-h1"></span></div>
+      <h1 class="sample s-h1">Your next career, by the numbers.</h1>
+    </div>
+    <div class="row">
+      <div class="meta"><strong>H2</strong><span id="px-h2"></span></div>
+      <h2 class="sample s-h2">Pick where you are today.</h2>
+    </div>
+    <div class="row">
+      <div class="meta"><strong>H3</strong><span id="px-h3"></span></div>
+      <h3 class="sample s-h3">Modulate maps the routes your skills connect to</h3>
+    </div>
+    <div class="row">
+      <div class="meta"><strong>Body</strong><span id="px-body"></span></div>
+      <p class="sample s-body">Modulate maps the routes your skills connect to, and what the job market says about each destination.</p>
+    </div>
+  </main>
+
+  <section class="panel roles" aria-label="Weight roles">
+    <h2 class="panel-title">Weight roles</h2>
+    <p class="panel-note">Heading and subheading use the heading font; body, label and button use the body font. H1 and H2 take the heading weight, H3 the subheading weight.</p>
+
+    <div class="role" id="role-body">
+      <div class="role-name">Body<span class="role-font"></span></div>
+      <input type="number" id="w-body" min="100" max="900" step="50" value="400" aria-label="Body weight">
+      <div><p class="rs body">Modulate maps the routes your skills connect to.</p><div class="flag"></div></div>
+    </div>
+    <div class="role" id="role-label">
+      <div class="role-name">Label<span class="role-font"></span></div>
+      <input type="number" id="w-label" min="100" max="900" step="50" value="500" aria-label="Label weight">
+      <div><p class="rs label">Destination</p><div class="flag"></div></div>
+    </div>
+    <div class="role" id="role-subheading">
+      <div class="role-name">Subheading<span class="role-font"></span></div>
+      <input type="number" id="w-subheading" min="100" max="900" step="50" value="600" aria-label="Subheading weight">
+      <div><p class="rs subheading">Pick where you are today</p><div class="flag"></div></div>
+    </div>
+    <div class="role" id="role-button">
+      <div class="role-name">Button<span class="role-font"></span></div>
+      <input type="number" id="w-button" min="100" max="900" step="50" value="600" aria-label="Button weight">
+      <div><button type="button" class="rs-btn" tabindex="-1">Pick a destination</button><div class="flag"></div></div>
+    </div>
+    <div class="role" id="role-heading">
+      <div class="role-name">Heading<span class="role-font"></span></div>
+      <input type="number" id="w-heading" min="100" max="900" step="50" value="700" aria-label="Heading weight">
+      <div><p class="rs heading">Your next career</p><div class="flag"></div></div>
+    </div>
+
+    <div class="shipped" id="shipped" aria-label="Weights each font ships"></div>
+  </section>
+
+  <section class="panel block" aria-label="Line height and letter spacing">
+    <h2 class="panel-title">Line height &amp; letter spacing</h2>
+    <p class="panel-note">Fonts and weights come from the pickers and roles above. Heading line height and spacing also apply to H1-H3 in the scale; body values apply to the body line.</p>
+
+    <h3 class="group">Line height</h3>
+    <div class="controls">
+      <div class="control">
+        <label for="s-lh-heading">Headings <output id="o-lh-heading" for="s-lh-heading"></output></label>
+        <input id="s-lh-heading" type="range" min="0.9" max="2" step="0.05" value="1.15">
+        <div class="ticks"><span>0.9</span><span>2.0</span></div>
+      </div>
+      <div class="control">
+        <label for="s-lh-body">Body text <output id="o-lh-body" for="s-lh-body"></output></label>
+        <input id="s-lh-body" type="range" min="0.9" max="2" step="0.05" value="1.5">
+        <div class="ticks"><span>0.9</span><span>2.0</span></div>
+      </div>
+    </div>
+
+    <h3 class="group">Letter spacing (em)</h3>
+    <div class="controls">
+      <div class="control">
+        <label for="s-ls-heading">Headings <output id="o-ls-heading" for="s-ls-heading"></output></label>
+        <input id="s-ls-heading" type="range" min="-0.05" max="0.2" step="0.005" value="-0.01">
+        <div class="ticks"><span>-0.05</span><span>0.2</span></div>
+      </div>
+      <div class="control">
+        <label for="s-ls-caps">All-caps labels <output id="o-ls-caps" for="s-ls-caps"></output></label>
+        <input id="s-ls-caps" type="range" min="-0.05" max="0.2" step="0.005" value="0.08">
+        <div class="ticks"><span>-0.05</span><span>0.2</span></div>
+      </div>
+      <div class="control">
+        <label for="s-ls-button">Buttons <output id="o-ls-button" for="s-ls-button"></output></label>
+        <input id="s-ls-button" type="range" min="-0.05" max="0.2" step="0.005" value="0.01">
+        <div class="ticks"><span>-0.05</span><span>0.2</span></div>
+      </div>
+      <div class="control">
+        <label for="s-ls-body">Body text <output id="o-ls-body" for="s-ls-body"></output></label>
+        <input id="s-ls-body" type="range" min="-0.05" max="0.2" step="0.005" value="0">
+        <div class="ticks"><span>-0.05</span><span>0.2</span></div>
+      </div>
+    </div>
+
+    <div class="demo">
+      <div class="row">
+        <div class="meta"><strong>Heading</strong></div>
+        <h3 class="d-heading">Your next career, by the numbers.</h3>
+      </div>
+      <div class="row">
+        <div class="meta"><strong>All-caps label</strong></div>
+        <p class="d-caps">Pick where you are today</p>
+      </div>
+      <div class="row">
+        <div class="meta"><strong>Button</strong></div>
+        <div><button type="button" class="d-btn" tabindex="-1">Pick a destination</button></div>
+      </div>
+      <div class="row">
+        <div class="meta"><strong>Body</strong></div>
+        <p class="d-body">Modulate maps the routes your skills connect to, and what the job market says about each destination. Pick where you are today, and see the roads that open up from there, with the job market's view of each one.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel block" aria-label="Fluid type">
+    <h2 class="panel-title">Fluid type</h2>
+    <p class="panel-note">Applies clamp(minimum, preferred, maximum) to the paragraph below. Resize the window to watch it move.</p>
+
+    <div class="fluid-inputs">
+      <div class="field">
+        <label for="f-min">Minimum</label>
+        <div class="pair"><input id="f-min" type="number" min="0" step="0.05" value="1"><span class="unit">rem</span></div>
+      </div>
+      <div class="field">
+        <div class="label">Preferred</div>
+        <div class="pair">
+          <input id="f-pref" type="number" min="0" step="0.05" value="0.9" aria-label="Preferred size, rem part"><span class="unit">rem +</span>
+          <input id="f-vw" type="number" min="0" step="0.05" value="0.5" aria-label="Preferred size, vw part"><span class="unit">vw</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-max">Maximum</label>
+        <div class="pair"><input id="f-max" type="number" min="0" step="0.05" value="1.375"><span class="unit">rem</span></div>
+      </div>
+    </div>
+
+    <div class="readouts" aria-live="off">
+      <span>Window width <b id="r-width"></b></span>
+      <span>Font size in use <b id="r-size"></b></span>
+      <span id="r-detail"></span>
+    </div>
+
+    <div class="code-line">
+      <code id="clampCss"></code>
+      <button type="button" id="copyClamp">Copy</button>
+    </div>
+    <p class="fluid-note" id="fluidNote"></p>
+
+    <p class="fluid-sample" id="fluidSample">Modulate maps the routes your skills connect to, and what the job market says about each destination. Pick where you are today, and see the roads that open up from there.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  /* ---------- Fonts ---------- */
+  // Weights are the upright weights Google Fonts ships for each family.
+  var FONTS = {
+    'Instrument Serif': { weights: [400], fallback: 'serif' },
+    'Redaction':        { weights: [400, 700], fallback: 'serif' },
+    'Instrument Sans':  { weights: [400, 500, 600, 700], fallback: 'sans-serif' },
+    'Nunito Sans':      { weights: [200, 300, 400, 500, 600, 700, 800, 900, 1000], fallback: 'sans-serif' }
+  };
+  var OWN = {
+    heading: ['Instrument Serif', 'Redaction'],
+    body: ['Instrument Sans', 'Nunito Sans']
+  };
+  var state = { heading: 'Instrument Serif', body: 'Instrument Sans' };
+  var loadState = {};   // font name -> 'loading' | 'ready' | 'error'
+
+  var ROLES = {
+    body:       { font: 'body',    weight: 400 },
+    label:      { font: 'body',    weight: 500 },
+    subheading: { font: 'heading', weight: 600 },
+    button:     { font: 'body',    weight: 600 },
+    heading:    { font: 'heading', weight: 700 }
+  };
+
+  var root = document.documentElement.style;
+  var $ = function (id) { return document.getElementById(id); };
+  var selects = { heading: $('headingFont'), body: $('bodyFont') };
+  var statuses = { heading: $('headingStatus'), body: $('bodyStatus') };
+
+  function fontUrl(name) {
+    return 'https://fonts.googleapis.com/css2?family=' + name.replace(/ /g, '+') +
+      ':wght@' + FONTS[name].weights.join(';') + '&display=swap';
+  }
+
+  function loadFont(name) {
+    if (loadState[name]) return;
+    loadState[name] = 'loading';
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = fontUrl(name);
+    link.onload = function () {
+      Promise.all(FONTS[name].weights.map(function (w) {
+        return document.fonts.load(w + ' 16px "' + name + '"');
+      })).then(function () { loadState[name] = 'ready'; renderStatus(); },
+               function () { loadState[name] = 'error'; renderStatus(); });
+    };
+    link.onerror = function () { loadState[name] = 'error'; renderStatus(); };
+    document.head.appendChild(link);
+  }
+
+  function renderStatus() {
+    ['heading', 'body'].forEach(function (k) {
+      var s = loadState[state[k]], el = statuses[k];
+      el.className = 'fstatus' + (s === 'error' ? ' err' : '');
+      el.textContent = s === 'ready' ? 'Loaded from Google Fonts'
+        : s === 'error' ? 'Could not load (offline?) - showing fallback'
+        : 'Loading from Google Fonts...';
+    });
+  }
+
+  // Each dropdown offers its own two fonts, plus whatever a swap put there.
+  function buildOptions(kind) {
+    var names = OWN[kind].slice();
+    if (names.indexOf(state[kind]) === -1) names.push(state[kind]);
+    var sel = selects[kind];
+    sel.innerHTML = '';
+    names.forEach(function (n) {
+      var o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      sel.appendChild(o);
+    });
+    sel.value = state[kind];
+  }
+
+  function applyFonts() {
+    ['heading', 'body'].forEach(function (k) {
+      var n = state[k];
+      loadFont(n);
+      root.setProperty('--font-' + k, '"' + n + '", ' + FONTS[n].fallback);
+    });
+    renderStatus();
+    renderWeights();
+  }
+
+  selects.heading.addEventListener('change', function () { state.heading = this.value; buildOptions('heading'); applyFonts(); });
+  selects.body.addEventListener('change', function () { state.body = this.value; buildOptions('body'); applyFonts(); });
+  $('swap').addEventListener('click', function () {
+    var t = state.heading; state.heading = state.body; state.body = t;
+    buildOptions('heading'); buildOptions('body'); applyFonts();
+  });
+
+  /* ---------- Weight roles ---------- */
+  // Which shipped weight the browser would pick for a requested weight
+  // (CSS font matching), and whether it would also synthesize bold.
+  function matchWeight(w, list) {
+    var asc = list.slice().sort(function (a, b) { return a - b; });
+    var up = function (min) { return asc.filter(function (x) { return x >= min; }); };
+    var down = function (max) { return asc.filter(function (x) { return x <= max; }).reverse(); };
+    var order;
+    if (w >= 400 && w <= 500) order = up(w).filter(function (x) { return x <= 500; }).concat(down(w), up(501));
+    else if (w < 400) order = down(w).concat(up(w));
+    else order = up(w).concat(down(w));
+    return order[0];
+  }
+
+  function renderWeights() {
+    var shownWeights = {};
+    Object.keys(ROLES).forEach(function (role) {
+      var r = ROLES[role], name = state[r.font], list = FONTS[name].weights;
+      var el = $('role-' + role), w = r.weight;
+      el.querySelector('.role-font').textContent = name;
+
+      var valid = typeof w === 'number' && isFinite(w) && w >= 1 && w <= 1000;
+      if (valid) root.setProperty('--w-' + role, String(w));
+      var bad = !valid || list.indexOf(w) === -1;
+      el.classList.toggle('bad', bad);
+
+      var flag = el.querySelector('.flag');
+      flag.textContent = '';
+      if (!valid) {
+        flag.textContent = 'Enter a weight between 1 and 1000. The last valid weight is still being previewed.';
+      } else if (bad) {
+        var picked = matchWeight(w, list);
+        var how = (w >= 600 && picked < 600)
+          ? 'it would synthesize a faux bold from the ' + picked + ' weight'
+          : 'it would substitute the nearest shipped weight, ' + picked;
+        flag.textContent = '⚠ ' + w + ' is not in ' + name + "'s list (" + list.join(', ') +
+          "). The browser would fake it: " + how + '.';
+      } else {
+        shownWeights[name] = (shownWeights[name] || []).concat(w);
+      }
+    });
+
+    // Weights each font ships, with the ones a role currently uses highlighted.
+    var box = $('shipped');
+    box.innerHTML = '';
+    [['heading', 'Heading font'], ['body', 'Body font']].forEach(function (pair) {
+      var name = state[pair[0]];
+      var line = document.createElement('div');
+      line.className = 'ship-line';
+      var who = document.createElement('div');
+      who.className = 'who';
+      who.innerHTML = pair[1] + ' <span></span>';
+      who.querySelector('span').textContent = '· ' + name + ' ships:';
+      line.appendChild(who);
+      FONTS[name].weights.forEach(function (w) {
+        var c = document.createElement('span');
+        var used = Object.keys(ROLES).some(function (role) {
+          return state[ROLES[role].font] === name && ROLES[role].weight === w;
+        });
+        c.className = 'chip' + (used ? ' used' : '');
+        c.textContent = w;
+        line.appendChild(c);
+      });
+      box.appendChild(line);
+    });
+  }
+
+  Object.keys(ROLES).forEach(function (role) {
+    $('w-' + role).addEventListener('input', function () {
+      var v = parseFloat(this.value);
+      ROLES[role].weight = isNaN(v) ? NaN : v;
+      renderWeights();
+    });
+  });
+
+  /* ---------- Size scale ---------- */
+  var base = $('base'), ratio = $('ratio'), preset = $('preset');
+  // exponent per level: body = base, H3 = base*r^2, H2 = base*r^3, H1 = base*r^4
+  var levels = { body: 0, h3: 2, h2: 3, h1: 4 };
+  function fmt(n) { return (Math.round(n * 100) / 100).toString(); }
+
+  function renderSizes() {
+    var b = parseFloat(base.value), r = parseFloat(ratio.value);
+    $('baseOut').textContent = b + ' px';
+    $('ratioOut').textContent = r.toFixed(3);
+    Object.keys(levels).forEach(function (k) {
+      var size = b * Math.pow(r, levels[k]);
+      root.setProperty('--fs-' + k, size + 'px');
+      $('px-' + k).textContent = fmt(size) + ' px';
+    });
+  }
+
+  function syncPreset() {
+    var r = parseFloat(ratio.value), match = 'custom';
+    Array.prototype.forEach.call(preset.options, function (o) {
+      if (o.value !== 'custom' && Math.abs(parseFloat(o.value) - r) < 0.0005) match = o.value;
+    });
+    preset.value = match;
+  }
+
+  base.addEventListener('input', renderSizes);
+  ratio.addEventListener('input', function () { syncPreset(); renderSizes(); });
+  preset.addEventListener('input', function () {
+    if (preset.value !== 'custom') ratio.value = preset.value;
+    renderSizes();
+  });
+
+  /* ---------- Line height + letter spacing ---------- */
+  // [control id, css variable, decimals, unit appended to the css value and the readout]
+  [
+    ['lh-heading', '--lh-heading', 2, ''],
+    ['lh-body',    '--lh-body',    2, ''],
+    ['ls-heading', '--ls-heading', 3, 'em'],
+    ['ls-caps',    '--ls-caps',    3, 'em'],
+    ['ls-button',  '--ls-button',  3, 'em'],
+    ['ls-body',    '--ls-body',    3, 'em']
+  ].forEach(function (s) {
+    var el = $('s-' + s[0]), out = $('o-' + s[0]);
+    function update() {
+      var v = parseFloat(el.value);
+      root.setProperty(s[1], v + s[3]);
+      out.textContent = v.toFixed(s[2]) + (s[3] ? ' ' + s[3] : '');
+    }
+    el.addEventListener('input', update);
+    update();
+  });
+
+  /* ---------- Fluid type ---------- */
+  var fluidSample = $('fluidSample');
+  function numVal(id) { var v = parseFloat($(id).value); return isFinite(v) ? v : NaN; }
+  function trim(n) { return String(+n.toFixed(4)); }
+  function r2(n) { return String(Math.round(n * 100) / 100); }
+
+  function renderFluid() {
+    var mn = numVal('f-min'), pr = numVal('f-pref'), pv = numVal('f-vw'), mx = numVal('f-max');
+    var valid = [mn, pr, pv, mx].every(isFinite);
+    var w = window.innerWidth;
+    $('r-width').textContent = w + ' px';
+
+    if (valid) {
+      var pref = trim(pr) + 'rem ' + (pv < 0 ? '- ' : '+ ') + trim(Math.abs(pv)) + 'vw';
+      var clampStr = 'clamp(' + trim(mn) + 'rem, ' + pref + ', ' + trim(mx) + 'rem)';
+      $('clampCss').textContent = 'font-size: ' + clampStr + ';';
+      fluidSample.style.fontSize = clampStr;
+    } else {
+      $('clampCss').textContent = 'Enter a number in every field.';
+    }
+
+    var used = parseFloat(getComputedStyle(fluidSample).fontSize);
+    $('r-size').textContent = r2(used) + ' px';
+
+    var detail = '', note = '';
+    if (valid) {
+      var remPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      var prefPx = pr * remPx + (pv / 100) * w;
+      var which = prefPx < mn * remPx ? 'minimum' : prefPx > mx * remPx ? 'maximum' : 'preferred';
+      if (mn > mx) which = 'minimum';
+      detail = 'Preferred works out to ' + r2(prefPx) + ' px, so the ' + which + ' is in use (1rem = ' + r2(remPx) + ' px).';
+      if (mn > mx) note = 'The minimum is larger than the maximum. In CSS the minimum wins, so the size never goes above it.';
+    }
+    $('r-detail').textContent = detail;
+    $('fluidNote').textContent = note;
+  }
+
+  ['f-min', 'f-pref', 'f-vw', 'f-max'].forEach(function (id) { $(id).addEventListener('input', renderFluid); });
+  window.addEventListener('resize', renderFluid);
+
+  $('copyClamp').addEventListener('click', function () {
+    var btn = this, code = $('clampCss'), text = code.textContent;
+    function done(msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = 'Copy'; }, 1400); }
+    function fallback() {
+      try {
+        var range = document.createRange(); range.selectNodeContents(code);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        done(document.execCommand('copy') ? 'Copied' : 'Selected - press Ctrl+C');
+      } catch (e) { done('Selected - press Ctrl+C'); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done('Copied'); }, fallback);
+    } else fallback();
+  });
+
+  /* ---------- Init ---------- */
+  renderFluid();
+  buildOptions('heading');
+  buildOptions('body');
+  syncPreset();
+  renderSizes();
+  applyFonts();
+})();
+</script>
+</body>
+</html>

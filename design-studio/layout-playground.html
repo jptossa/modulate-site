@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout Playground</title>
+<style>
+  :root {
+    /* ---------- playground chrome (matches the other playgrounds) ---------- */
+    --bg: #fbfaf8;
+    --surface: #ffffff;
+    --text: #1d1b1a;
+    --muted: #6b6560;
+    --line: #e4e0da;
+    --accent: #3b5bdb;
+    --on-accent: #ffffff;
+    --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    /* annotation colours, one per kind of space */
+    --k-pad: #d9480f;
+    --k-gap: #3b5bdb;
+    --k-cards: #0b7285;
+    --on-k: #ffffff;
+
+    /* ---------- THE SPACING SYSTEM ----------
+       JS only ever changes --base-unit. Every space token is a multiple of it,
+       so the whole layout scales together. */
+    --base-unit: 8px;
+    --space-1:  calc(1  * var(--base-unit));
+    --space-2:  calc(2  * var(--base-unit));
+    --space-3:  calc(3  * var(--base-unit));
+    --space-4:  calc(4  * var(--base-unit));
+    --space-6:  calc(6  * var(--base-unit));
+    --space-8:  calc(8  * var(--base-unit));
+    --space-12: calc(12 * var(--base-unit));
+    --space-16: calc(16 * var(--base-unit));
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312;
+      --surface: #1d1b1a;
+      --text: #f1eeea;
+      --muted: #a39d96;
+      --line: #35312e;
+      --accent: #8fa5ff;
+      --on-accent: #141312;
+      --k-pad: #ff922b;
+      --k-gap: #8fa5ff;
+      --k-cards: #3bc9db;
+      --on-k: #141312;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ui-font);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  .page-title {
+    font-size: 14px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 16px;
+  }
+  h2.panel-title {
+    font-size: 13px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 4px;
+  }
+  .panel-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  section { margin-top: 24px; }
+
+  /* ---------- Controls ---------- */
+  .controls-wrap { display: grid; gap: 12px; }
+  @media (min-width: 700px) and (min-height: 760px) {
+    .controls-wrap { position: sticky; top: 8px; z-index: 5; }
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 20px 32px;
+    align-items: start;
+  }
+  .control .label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; font-weight: 600; margin-bottom: 8px;
+  }
+  .control output { font-family: var(--mono); font-weight: 400; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg label { position: relative; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .seg span {
+    display: block; min-width: 56px; text-align: center;
+    padding: 8px 14px; font-size: 14px; font-weight: 600; font-family: var(--mono);
+    background: var(--bg); color: var(--text);
+  }
+  .seg label + label span { border-left: 1px solid var(--line); }
+  .seg input:checked + span { background: var(--accent); color: var(--on-accent); }
+  .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -4px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+  input[type=range]:focus-visible, input[type=checkbox]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ticks {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px;
+  }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .toggle input { accent-color: var(--accent); margin: 0; }
+  .controls .toggle-row { grid-column: 1 / -1; }
+  @media (max-width: 560px) {
+    .controls { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Scale table ---------- */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 0 12px 8px 0; border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td.token, td.px, td.mult { font-family: var(--mono); white-space: nowrap; }
+  td.px { font-weight: 600; }
+  td.mult, td.use { color: var(--muted); }
+  td.use { font-size: 13px; min-width: 180px; }
+  td.bar { min-width: 200px; }
+  /* the bar's width is the token itself, so the table is proof the variables work */
+  .bar-fill { display: block; height: 10px; border-radius: 3px; background: var(--accent); }
+  .dim { opacity: .55; }
+
+  /* ---------- Sample stage ---------- */
+  .stage {
+    container: stage / inline-size;
+    background: var(--bg);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 36px 16px 24px;
+    overflow-x: auto;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: minmax(0, 420px);
+    gap: var(--space-6);                 /* gap between cards */
+    justify-content: center;
+    align-items: start;
+  }
+  @container stage (min-width: 900px) {
+    .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .card {
+    position: relative;
+    display: flex; flex-direction: column;
+    gap: var(--space-3);                 /* gap between the card's parts */
+    padding: var(--space-4);             /* card padding */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .head { position: relative; display: flex; flex-direction: column; gap: var(--space-1); }
+  .eyebrow { position: relative; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .card h3 { margin: 0; font-size: 18px; line-height: 1.25; }
+  .card p { position: relative; margin: 0; font-size: 14px; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .btn {
+    position: relative;
+    padding: var(--space-1) var(--space-3);
+    border-radius: 8px; font-size: 13px; font-weight: 600; line-height: 1.3;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+  /* ---------- Annotations (fixed px on purpose: they're chrome, not the sample) ---------- */
+  .mark, .pad { position: absolute; pointer-events: none; --k: var(--k-gap); }
+  .mark {
+    background:
+      repeating-linear-gradient(45deg,
+        color-mix(in srgb, var(--k) 55%, transparent) 0 2px, transparent 2px 5px),
+      color-mix(in srgb, var(--k) 14%, transparent);
+  }
+  .mark.v { left: 0; right: 0; top: 100%; }            /* vertical gap: band under the element */
+  .mark.h { left: 100%; top: 0; bottom: 0; }            /* horizontal gap: band beside it */
+  .mark.s1 { height: var(--space-1); }
+  .mark.s3 { height: var(--space-3); }
+  .mark.s2 { width: var(--space-2); }
+  .pad {
+    --k: var(--k-pad);
+    inset: 0; border-radius: inherit;
+    border: var(--space-4) solid color-mix(in srgb, var(--k) 16%, transparent);
+  }
+  .chip {
+    position: absolute; z-index: 2;
+    font: 600 10px/12px var(--mono); padding: 1px 5px; border-radius: 4px;
+    background: var(--k); color: var(--on-k); white-space: nowrap;
+  }
+  .mark.v .chip { right: 0; top: 50%; transform: translateY(-50%); }
+  .mark.h .chip { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; }
+  .pad .chip { top: 0; left: 12px; transform: translateY(-50%); }
+  .mark.cg { --k: var(--k-cards); }
+  .mark.cg.v { left: 0; right: 0; top: 100%; height: var(--space-6); }
+  .mark.cg.h { left: 100%; top: 0; bottom: 0; width: var(--space-6); display: none; }
+  .mark.cg.h .chip { top: -22px; margin-top: 0; }
+  @container stage (min-width: 900px) {
+    .mark.cg.v { display: none; }
+    .mark.cg.h { display: block; }
+  }
+  .stage.noann .mark, .stage.noann .pad { display: none !important; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  /* ---------- Shared form bits for the new panels ---------- */
+  .controls.fields { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  select {
+    font: inherit; font-size: 14px; padding: 8px 10px; width: 100%;
+    color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .readout { font: 13px/1.6 var(--mono); color: var(--muted); margin: 16px 0 12px; }
+  .readout b { color: var(--text); font-weight: 600; }
+  .readout .warn { color: var(--k-pad); font-weight: 600; }
+  .dis { opacity: .45; }
+
+  /* ---------- 12-column grid ---------- */
+  .gframe {
+    --cols: 12; --g: var(--space-3); --m: var(--space-4);   /* JS swaps these for other space names */
+    position: relative; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .gbands {
+    position: absolute; inset: 0; pointer-events: none;
+    display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    column-gap: var(--g); padding-inline: var(--m);
+  }
+  .gband {
+    background: color-mix(in srgb, var(--k-gap) 16%, transparent);
+    box-shadow: inset 1px 0 0 color-mix(in srgb, var(--k-gap) 35%, transparent),
+                inset -1px 0 0 color-mix(in srgb, var(--k-gap) 35%, transparent);
+    font: 600 10px/1 var(--mono); color: var(--k-gap);
+    text-align: center; padding-top: 10px; overflow: hidden;
+  }
+  .gmargin {
+    position: absolute; top: 0; bottom: 0; width: var(--m); pointer-events: none;
+    background:
+      repeating-linear-gradient(45deg, color-mix(in srgb, var(--k-pad) 45%, transparent) 0 2px, transparent 2px 5px),
+      color-mix(in srgb, var(--k-pad) 10%, transparent);
+  }
+  .gmargin.l { left: 0; } .gmargin.r { right: 0; }
+  .grows { position: relative; display: grid; row-gap: var(--space-3); padding-block: 36px 20px; }
+  .grow {
+    display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    column-gap: var(--g); padding-inline: var(--m);
+  }
+  .gblock {
+    height: 44px; min-width: 0; overflow: hidden; white-space: nowrap;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; background: var(--accent); color: var(--on-accent);
+    font: 600 12px var(--mono);
+  }
+  .gblock:nth-child(even) { background: color-mix(in srgb, var(--accent) 60%, var(--text)); }
+
+  /* ---------- Responsive strategies ---------- */
+  .rwrap { overflow-x: auto; padding-bottom: 8px; }
+  .rinner { width: 920px; }
+  .ruler { position: relative; height: 40px; margin-bottom: 8px; }
+  .rseg {
+    position: absolute; top: 0; height: 22px; overflow: hidden; white-space: nowrap;
+    font: 600 11px/22px var(--mono); text-align: center; color: var(--text);
+    border-radius: 4px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  .rseg.n1 { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .rseg.n2 { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  .rseg.n3 { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+  .rseg.rdim {
+    color: var(--muted); font-weight: 400; box-shadow: none;
+    background: repeating-linear-gradient(45deg, var(--line) 0 2px, transparent 2px 6px);
+  }
+  .rtick {
+    position: absolute; top: 22px; transform: translateX(-50%);
+    font: 10px/14px var(--mono); color: var(--muted); border-left: 1px solid var(--muted); padding: 2px 0 0 3px; height: 18px;
+  }
+  .rmark { position: absolute; top: 0; height: 22px; width: 2px; margin-left: -1px; background: var(--k-pad); z-index: 2; }
+  .rbox { position: relative; }
+  .rframe {
+    --rcols: 3;
+    overflow: hidden; padding: var(--space-2);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .rgrid { display: grid; gap: var(--space-3); grid-template-columns: repeat(var(--rcols), minmax(0, 1fr)); }
+  .rbox.adaptive .rgrid { grid-template-columns: repeat(var(--rcols), 180px); justify-content: start; }
+  .rcard {
+    min-width: 0; overflow: hidden;
+    display: flex; flex-direction: column; gap: var(--space-1);
+    padding: var(--space-2);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  }
+  .rcard .n { font: 600 11px var(--mono); color: var(--muted); }
+  .rcard h4 { margin: 0; font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+  .rcard p { margin: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .wchip {
+    align-self: flex-start; margin-top: auto;
+    font: 600 10px/12px var(--mono); padding: 1px 5px; border-radius: 4px;
+    background: var(--k-cards); color: var(--on-k);
+  }
+  .rhandle {
+    position: absolute; left: 100%; top: 0; bottom: 0; width: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: ew-resize; touch-action: none; border-radius: 0 8px 8px 0;
+  }
+  body.resizing { user-select: none; -webkit-user-select: none; cursor: ew-resize; }
+  .rhandle::before { content: ""; width: 4px; height: 40px; border-radius: 2px; background: var(--muted); opacity: .5; }
+  .rhandle:hover::before, .rhandle:focus-visible::before { background: var(--accent); opacity: 1; }
+  .rhandle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mode-desc { font-size: 13px; color: var(--muted); margin: 12px 0 0; min-height: 40px; }
+
+  /* ---------- Tokens code ---------- */
+  pre {
+    margin: 0; padding: 14px 16px; overflow-x: auto;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    font: 13px/1.6 var(--mono); color: var(--text);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page-title">Layout Playground</h1>
+
+  <div class="controls-wrap">
+    <div class="panel">
+      <h2 class="panel-title">Base unit</h2>
+      <p class="panel-note">Every space token is a multiple of one base unit. Change it and the whole layout scales together.</p>
+      <div class="controls">
+        <div class="control">
+          <div class="label" id="seg-label">Choose</div>
+          <div class="seg" role="radiogroup" aria-labelledby="seg-label">
+            <label><input type="radio" name="base" value="4"><span>4</span></label>
+            <label><input type="radio" name="base" value="8"><span>8</span></label>
+          </div>
+        </div>
+        <div class="control">
+          <label class="label" for="base-range"><span>Fine tune</span><output id="base-out" for="base-range">8px</output></label>
+          <input type="range" id="base-range" min="2" max="12" step="1" value="8">
+          <div class="ticks" aria-hidden="true"><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2 class="panel-title">Spacing scale</h2>
+    <p class="panel-note">Each name equals its number times the base unit. The bar is drawn with the token itself.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Formula</th><th>Pixels</th><th>Length</th><th>Used on the card for</th></tr></thead>
+        <tbody id="scale-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Sample cards</h2>
+    <p class="panel-note">Padding, internal gaps and the gap between cards use only the space names above. Type size stays fixed, so you see spacing change on its own.</p>
+    <label class="toggle" style="margin-bottom:12px"><input type="checkbox" id="ann" checked> Show space labels</label>
+
+    <div class="stage" id="stage">
+      <div class="cards">
+        <article class="card">
+          <span class="pad"><span class="chip">padding · space-4</span></span>
+          <span class="mark cg v"><span class="chip">between cards · space-6</span></span>
+          <span class="mark cg h"><span class="chip">between cards · space-6</span></span>
+          <header class="head">
+            <span class="eyebrow">Report
+              <span class="mark v s1"><span class="chip">space-1</span></span>
+            </span>
+            <h3>Quarterly summary</h3>
+            <span class="mark v s3" style="top:100%"><span class="chip">between parts · space-3</span></span>
+          </header>
+          <p>Revenue grew steadily across every region this quarter.
+            <span class="mark v s3"><span class="chip">between parts · space-3</span></span>
+          </p>
+          <div class="actions">
+            <span class="btn primary">Open
+              <span class="mark h s2"><span class="chip">space-2</span></span>
+            </span>
+            <span class="btn">Share</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="mark cg v"><span class="chip">between cards · space-6</span></span>
+          <span class="mark cg h"><span class="chip">between cards · space-6</span></span>
+          <header class="head">
+            <span class="eyebrow">Guide</span>
+            <h3>Onboarding flow</h3>
+          </header>
+          <p>Three short steps take a new teammate from invite to first commit.</p>
+          <div class="actions"><span class="btn primary">Open</span><span class="btn">Share</span></div>
+        </article>
+
+        <article class="card">
+          <header class="head">
+            <span class="eyebrow">Note</span>
+            <h3>Release checklist</h3>
+          </header>
+          <p>Freeze the branch, run the suite, then tag and publish.</p>
+          <div class="actions"><span class="btn primary">Open</span><span class="btn">Share</span></div>
+        </article>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--k-pad)"></i>Padding</span>
+      <span><i style="background:var(--k-gap)"></i>Gap inside a card</span>
+      <span><i style="background:var(--k-cards)"></i>Gap between cards</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Column grid</h2>
+    <p class="panel-note">Columns are the blue bands, the margin is hatched. Gutter and margin are chosen from the space names, so they follow the base unit. The blocks use the same grid definition, so they snap to the columns.</p>
+    <div class="controls fields">
+      <div class="control">
+        <label class="label" for="g-cols"><span>Columns</span><output id="g-cols-out" for="g-cols">12</output></label>
+        <input type="range" id="g-cols" min="4" max="16" step="1" value="12">
+      </div>
+      <div class="control">
+        <label class="label" for="g-gutter"><span>Gutter</span></label>
+        <select id="g-gutter"></select>
+      </div>
+      <div class="control">
+        <label class="label" for="g-margin"><span>Outer margin</span></label>
+        <select id="g-margin"></select>
+      </div>
+    </div>
+    <div class="readout" id="g-readout"></div>
+    <div class="gframe" id="gframe">
+      <div class="gmargin l"></div><div class="gmargin r"></div>
+      <div class="gbands" id="g-bands"></div>
+      <div class="grows" id="g-rows"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--k-gap)"></i>Column</span>
+      <span><i style="background:var(--k-pad)"></i>Outer margin</span>
+      <span>White space between bands is the gutter</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Responsive strategies</h2>
+    <p class="panel-note">Drag the frame's right edge (or focus it and use the arrow keys) between 240 and 900px. Gutters and padding inside the frame use space names too.</p>
+    <div class="controls fields">
+      <div class="control">
+        <div class="label" id="mode-label">Mode</div>
+        <div class="seg" role="radiogroup" aria-labelledby="mode-label">
+          <label><input type="radio" name="mode" value="fluid"><span>Fluid</span></label>
+          <label><input type="radio" name="mode" value="adaptive"><span>Adaptive</span></label>
+          <label><input type="radio" name="mode" value="combo" checked><span>Combination</span></label>
+        </div>
+      </div>
+      <div class="control bp">
+        <label class="label" for="bp1"><span>Breakpoint 1: 2 columns from</span><output id="bp1-out" for="bp1">480px</output></label>
+        <input type="range" id="bp1" min="250" max="890" step="10" value="480">
+      </div>
+      <div class="control bp">
+        <label class="label" for="bp2"><span>Breakpoint 2: 3 columns from</span><output id="bp2-out" for="bp2">720px</output></label>
+        <input type="range" id="bp2" min="250" max="890" step="10" value="720">
+      </div>
+    </div>
+    <p class="mode-desc" id="mode-desc"></p>
+    <div class="readout" id="r-readout"></div>
+    <div class="rwrap">
+      <div class="rinner">
+        <div class="ruler" id="ruler"></div>
+        <div class="rbox" id="rbox">
+          <div class="rframe" id="rframe"><div class="rgrid" id="rgrid"></div></div>
+          <div class="rhandle" id="rhandle" role="slider" tabindex="0" aria-label="Frame width" aria-valuemin="240" aria-valuemax="900" aria-valuenow="600"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="panel-title">Tokens</h2>
+    <p class="panel-note">The custom properties behind everything above, with the current base unit.</p>
+    <pre id="tokens"></pre>
+  </section>
+</div>
+
+<script>
+  // name, multiplier, what it does on the sample card
+  const SCALE = [
+    ['space-1',  1,  'Gap between eyebrow and title'],
+    ['space-2',  2,  'Gap between buttons'],
+    ['space-3',  3,  'Gap between the card’s parts'],
+    ['space-4',  4,  'Card padding'],
+    ['space-6',  6,  'Gap between cards'],
+    ['space-8',  8,  null],
+    ['space-12', 12, null],
+    ['space-16', 16, null],
+  ];
+
+  // lookups used by the grid and responsive panels
+  const MULT = Object.fromEntries(SCALE.map(([name, n]) => [name, n]));
+  let currentBase = 8;
+  const px = name => MULT[name] * currentBase;
+  const onBaseChange = [];
+
+  const root   = document.documentElement;
+  const range  = document.getElementById('base-range');
+  const out    = document.getElementById('base-out');
+  const radios = document.querySelectorAll('input[name=base]');
+  const body   = document.getElementById('scale-body');
+  const tokens = document.getElementById('tokens');
+  const stage  = document.getElementById('stage');
+
+  function render(base) {
+    body.innerHTML = SCALE.map(([name, n, use]) => `
+      <tr class="${use ? '' : 'dim'}">
+        <td class="token">${name}</td>
+        <td class="mult">${n} × ${base}</td>
+        <td class="px">${n * base}px</td>
+        <td class="bar"><span class="bar-fill" style="width:var(--${name})"></span></td>
+        <td class="use">${use || 'Not used here — available for sections and page layout'}</td>
+      </tr>`).join('');
+
+    tokens.textContent =
+      ':root {\n  --base-unit: ' + base + 'px;\n' +
+      SCALE.map(([name, n]) => `  --${name}: calc(${n} * var(--base-unit));` + ' '.repeat(Math.max(1, 3 - String(n).length)) + `/* ${n * base}px */`).join('\n') +
+      '\n}';
+  }
+
+  function setBase(base) {
+    root.style.setProperty('--base-unit', base + 'px');
+    range.value = base;
+    range.setAttribute('aria-valuetext', base + ' pixels');
+    out.textContent = base + 'px';
+    // the 4 / 8 choice reflects the slider; any other value leaves both unselected
+    radios.forEach(r => { r.checked = Number(r.value) === base; });
+    render(base);
+    currentBase = base;
+    onBaseChange.forEach(fn => fn());
+  }
+
+  range.addEventListener('input', () => setBase(Number(range.value)));
+  radios.forEach(r => r.addEventListener('change', () => setBase(Number(r.value))));
+  document.getElementById('ann').addEventListener('change', e => {
+    stage.classList.toggle('noann', !e.target.checked);
+  });
+
+  /* ================= Column grid ================= */
+  const GRID_ROWS = [[6, 6], [4, 4, 4], [8, 4], [3, 6, 3]];            // spans out of 12
+  const GUTTERS = ['space-1', 'space-2', 'space-3', 'space-4', 'space-6', 'space-8'];
+  const MARGINS = SCALE.map(([name]) => name);
+  const grid = { cols: 12, gutter: 'space-3', margin: 'space-4' };
+
+  const gFrame   = document.getElementById('gframe');
+  const gCols    = document.getElementById('g-cols');
+  const gColsOut = document.getElementById('g-cols-out');
+  const gGutter  = document.getElementById('g-gutter');
+  const gMargin  = document.getElementById('g-margin');
+  const gBands   = document.getElementById('g-bands');
+  const gRows    = document.getElementById('g-rows');
+  const gReadout = document.getElementById('g-readout');
+
+  // Re-map a span out of 12 onto n columns, so each row always fills the grid exactly.
+  function spansFor(pattern, n) {
+    let cum = 0, prev = 0;
+    return pattern.map(p => {
+      cum += p;
+      const edge = Math.round(cum * n / 12);
+      const span = edge - prev;
+      prev = edge;
+      return span;
+    });
+  }
+
+  function fillSelect(sel, names, current) {
+    sel.innerHTML = names.map(n => `<option value="${n}">${n} · ${px(n)}px</option>`).join('');
+    sel.value = current;
+  }
+
+  function renderGridReadout() {
+    const m = px(grid.margin), g = px(grid.gutter);
+    const colW = (gFrame.clientWidth - 2 * m - (grid.cols - 1) * g) / grid.cols;
+    gReadout.innerHTML =
+      `<b>${grid.cols}</b> columns · gutter <b>${g}px</b> (${grid.gutter}) · margin <b>${m}px</b> (${grid.margin}) · column <b>${colW > 0 ? '≈' + Math.round(colW) : 0}px</b>` +
+      (colW < 8 ? ' <span class="warn">— columns are too narrow: lower the gutter, margin, columns or base unit</span>' : '');
+  }
+
+  function renderGrid() {
+    gFrame.style.setProperty('--cols', grid.cols);
+    gFrame.style.setProperty('--g', `var(--${grid.gutter})`);
+    gFrame.style.setProperty('--m', `var(--${grid.margin})`);
+    gBands.innerHTML = Array.from({ length: grid.cols }, (_, i) => `<div class="gband">${i + 1}</div>`).join('');
+    gRows.innerHTML = GRID_ROWS.map(pattern =>
+      `<div class="grow">${spansFor(pattern, grid.cols).map(s =>
+        `<div class="gblock" style="grid-column: span ${s}">span ${s}</div>`).join('')}</div>`).join('');
+    renderGridReadout();
+  }
+
+  function refreshGridSelects() {
+    fillSelect(gGutter, GUTTERS, grid.gutter);
+    fillSelect(gMargin, MARGINS, grid.margin);
+    renderGridReadout();
+  }
+
+  gCols.addEventListener('input', () => {
+    grid.cols = Number(gCols.value);
+    gColsOut.textContent = grid.cols;
+    renderGrid();
+  });
+  gGutter.addEventListener('change', () => { grid.gutter = gGutter.value; renderGrid(); });
+  gMargin.addEventListener('change', () => { grid.margin = gMargin.value; renderGrid(); });
+  new ResizeObserver(renderGridReadout).observe(gFrame);
+  onBaseChange.push(refreshGridSelects);
+
+  /* ================= Responsive strategies ================= */
+  const R_MIN = 240, R_MAX = 900, ADAPTIVE_CARD_W = 180, FLUID_COLS = 3;
+  const resp = { mode: 'combo', w: 600, bp1: 480, bp2: 720 };
+
+  const CARDS = [
+    ['Overview',  'Key numbers at a glance.'],
+    ['Activity',  'What changed since yesterday.'],
+    ['Team',      'Who is working on what.'],
+    ['Billing',   'Plan, usage and invoices.'],
+    ['Reports',   'Export and schedule summaries.'],
+    ['Settings',  'Preferences and access.'],
+  ];
+  const MODE_TEXT = {
+    fluid:    `Always ${FLUID_COLS} columns. Cards stretch and shrink with the frame and nothing reflows, so they get cramped when it is narrow.`,
+    adaptive: `Fixed ${ADAPTIVE_CARD_W}px cards. The column count snaps to a new value at each breakpoint; between them, spare width sits empty.`,
+    combo:    'Cards flex to fill the width within a breakpoint, and the column count reflows at each breakpoint.',
+  };
+
+  const rBox     = document.getElementById('rbox');
+  const rGrid    = document.getElementById('rgrid');
+  const rFrame   = document.getElementById('rframe');
+  const rHandle  = document.getElementById('rhandle');
+  const ruler    = document.getElementById('ruler');
+  const rReadout = document.getElementById('r-readout');
+  const modeDesc = document.getElementById('mode-desc');
+  const bp1 = document.getElementById('bp1'), bp2 = document.getElementById('bp2');
+  const bp1Out = document.getElementById('bp1-out'), bp2Out = document.getElementById('bp2-out');
+  const modeRadios = document.querySelectorAll('input[name=mode]');
+
+  rGrid.innerHTML = CARDS.map(([title, text], i) =>
+    `<article class="rcard"><span class="n">0${i + 1}</span><h4>${title}</h4><p>${text}</p><span class="wchip"></span></article>`).join('');
+  const cardObserver = new ResizeObserver(entries => entries.forEach(e => {
+    e.target.querySelector('.wchip').textContent = Math.round(e.target.getBoundingClientRect().width) + 'px';
+  }));
+  rGrid.querySelectorAll('.rcard').forEach(c => cardObserver.observe(c));
+
+  function respCols() {
+    if (resp.mode === 'fluid') return FLUID_COLS;
+    return resp.w < resp.bp1 ? 1 : resp.w < resp.bp2 ? 2 : 3;
+  }
+
+  function renderRuler(cols) {
+    const fluid = resp.mode === 'fluid';
+    const segs = fluid
+      ? [[R_MIN, R_MAX, FLUID_COLS]]
+      : [[R_MIN, resp.bp1, 1], [resp.bp1, resp.bp2, 2], [resp.bp2, R_MAX, 3]];
+    ruler.innerHTML =
+      `<div class="rseg rdim" style="left:0;width:${R_MIN}px">below 240</div>` +
+      segs.map(([a, b, n]) => `<div class="rseg n${n}" style="left:${a}px;width:${b - a}px">${n} column${n > 1 ? 's' : ''}</div>`).join('') +
+      (fluid ? '' : [resp.bp1, resp.bp2].map(v => `<div class="rtick" style="left:${v}px">${v}</div>`).join('')) +
+      `<div class="rmark" style="left:${resp.w}px"></div>`;
+  }
+
+  function renderResp() {
+    const cols = respCols();
+    const fluid = resp.mode === 'fluid';
+    rBox.style.width = resp.w + 'px';
+    rBox.classList.toggle('adaptive', resp.mode === 'adaptive');
+    rFrame.style.setProperty('--rcols', cols);
+    rHandle.setAttribute('aria-valuenow', resp.w);
+    rHandle.setAttribute('aria-valuetext', resp.w + ' pixels, ' + cols + ' columns');
+    modeDesc.textContent = MODE_TEXT[resp.mode];
+    bp1.disabled = bp2.disabled = fluid;
+    document.querySelectorAll('.control.bp').forEach(c => c.classList.toggle('dis', fluid));
+    bp1.value = resp.bp1; bp2.value = resp.bp2;
+    bp1Out.textContent = resp.bp1 + 'px'; bp2Out.textContent = resp.bp2 + 'px';
+    renderRuler(cols);
+
+    const overflow = resp.mode === 'adaptive' && rGrid.scrollWidth > rGrid.clientWidth + 1;
+    rReadout.innerHTML =
+      `frame <b>${resp.w}px</b> · <b>${cols}</b> column${cols > 1 ? 's' : ''}` +
+      (fluid ? ' (fixed)' : '') +
+      (overflow ? ' <span class="warn">— fixed cards no longer fit: raise the breakpoint</span>' : '');
+  }
+
+  function setFrameWidth(w) {
+    resp.w = Math.round(Math.min(R_MAX, Math.max(R_MIN, w)));
+    renderResp();
+  }
+
+  // pointer drag on the right edge
+  // The width follows the pointer's movement since the drag began. (Measuring against the frame's
+  // on-screen edge fed back on itself whenever the scroll area autoscrolled during the drag.)
+  let dragging = false, startX = 0, startW = 0;
+  const endDrag = () => { dragging = false; document.body.classList.remove('resizing'); };
+  rHandle.addEventListener('pointerdown', e => {
+    dragging = true; startX = e.clientX; startW = resp.w;
+    document.body.classList.add('resizing');
+    rHandle.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  rHandle.addEventListener('pointermove', e => { if (dragging) setFrameWidth(startW + e.clientX - startX); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => rHandle.addEventListener(t, endDrag));
+  rHandle.addEventListener('selectstart', e => e.preventDefault());
+  // keyboard: arrows nudge by 10 (50 with Shift), Home / End jump to the limits
+  rHandle.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 50 : 10;
+    const next = { ArrowRight: resp.w + step, ArrowUp: resp.w + step, ArrowLeft: resp.w - step, ArrowDown: resp.w - step, Home: R_MIN, End: R_MAX }[e.key];
+    if (next !== undefined) { e.preventDefault(); setFrameWidth(next); }
+  });
+
+  modeRadios.forEach(r => r.addEventListener('change', () => { resp.mode = r.value; renderResp(); }));
+  // breakpoints can't cross each other
+  bp1.addEventListener('input', () => { resp.bp1 = Math.min(Number(bp1.value), resp.bp2 - 10); renderResp(); });
+  bp2.addEventListener('input', () => { resp.bp2 = Math.max(Number(bp2.value), resp.bp1 + 10); renderResp(); });
+  onBaseChange.push(renderResp);   // padding and gaps in the frame follow the base unit
+
+  renderGrid();
+  setBase(8);
+</script>
+</body>
+</html>

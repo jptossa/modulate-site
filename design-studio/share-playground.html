@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share playground</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* Page chrome uses its own --pg-* values so editing tokens only changes the sample. */
+  :root {
+    --pg-bg: #f1f3f6; --pg-panel: #fff; --pg-text: #1c2030; --pg-muted: #5b6475;
+    --pg-line: #d9dee7; --pg-accent: #3b3fd8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--pg-bg); color: var(--pg-text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0; }
+  .badge { background: #1c2030; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; padding: 4px 10px; border-radius: 999px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  body.readonly .grid { grid-template-columns: 1fr; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--pg-panel); border: 1px solid var(--pg-line); border-radius: 10px; padding: 16px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--pg-muted); margin: 0 0 12px; }
+  .field { display: grid; grid-template-columns: 120px 1fr 64px; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .field label { font-weight: 600; font-size: 13px; }
+  .field code { font-size: 12px; color: var(--pg-muted); text-align: right; }
+  .field input[type=color] { width: 100%; height: 32px; padding: 0; border: 1px solid var(--pg-line); border-radius: 6px; background: none; }
+  .field input[type=range] { width: 100%; }
+  .ctl { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--pg-line);
+    background: #fff; color: var(--pg-text); cursor: pointer; }
+  .ctl:hover { border-color: #9aa3b5; }
+  .ctl.primary { background: var(--pg-accent); border-color: var(--pg-accent); color: #fff; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  #themes { list-style: none; padding: 0; margin: 12px 0 0; }
+  #themes li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--pg-line); }
+  #themes .name { flex: 1; font-weight: 600; overflow-wrap: anywhere; }
+  #themes .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--pg-line); flex: none; }
+  .empty { color: var(--pg-muted); font-size: 13px; margin: 12px 0 0; }
+  .note { color: var(--pg-muted); font-size: 13px; margin: 16px 0 0; }
+  #status { min-height: 1.4em; font-size: 13px; color: var(--pg-accent); margin: 8px 0 0; }
+  [hidden] { display: none !important; }
+
+  /* Sample: only var(--token) references from here on. */
+  .stage { background: var(--color-background); padding: 24px; border-radius: 10px; border: 1px solid var(--pg-line); }
+  .sample-card { background: var(--color-surface); color: var(--color-text); border: var(--border-width-default) solid var(--color-border);
+    border-radius: var(--radius-md); padding: var(--space-4); box-shadow: var(--shadow-md);
+    font-family: var(--font-family-body); font-size: var(--type-base); line-height: var(--line-height-body); max-width: 340px; }
+  .sample-card h3 { margin: 0 0 var(--space-2); font-family: var(--font-family-heading); font-weight: var(--font-weight-heading);
+    line-height: var(--line-height-heading); font-size: var(--font-size-xl); }
+  .sample-card p { margin: 0 0 var(--space-4); color: var(--color-muted); }
+  .sample-btn { font: inherit; font-weight: var(--font-weight-button); background: var(--color-primary); color: var(--color-on-primary);
+    border: 0; border-radius: var(--radius-md); padding: var(--space-2) var(--space-4); cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Share playground</h1>
+    <span class="badge" id="badge" hidden>Read-only</span>
+  </header>
+
+  <div class="grid">
+    <section class="panel" id="editor">
+      <h2>Edit tokens</h2>
+      <div class="field"><label for="in-primary">--color-primary</label>
+        <input type="color" id="in-primary" data-token="--color-primary"><code></code></div>
+      <div class="field"><label for="in-surface">--color-surface</label>
+        <input type="color" id="in-surface" data-token="--color-surface"><code></code></div>
+      <div class="field"><label for="in-radius">--radius-md</label>
+        <input type="range" id="in-radius" data-token="--radius-md" min="0" max="32" step="1"><code></code></div>
+      <div class="field"><label for="in-space">--space-4</label>
+        <input type="range" id="in-space" data-token="--space-4" min="4" max="40" step="1"><code></code></div>
+      <div class="field"><label for="in-type">--type-base</label>
+        <input type="range" id="in-type" data-token="--type-base" min="12" max="24" step="1"><code></code></div>
+      <div class="row">
+        <button class="ctl" id="reset" type="button">Reset</button>
+        <button class="ctl primary" id="copy" type="button">Copy view-only link</button>
+      </div>
+      <p id="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Preview</h2>
+      <div class="stage">
+        <div class="sample-card">
+          <h3>Sample card</h3>
+          <p>This card and button read only var(--token) values, so edits show up instantly.</p>
+          <button class="sample-btn" type="button">Sample button</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="saving" style="margin-top:16px">
+    <h2>Saved themes</h2>
+    <div class="row"><button class="ctl primary" id="save" type="button">Save theme</button></div>
+    <ul id="themes"></ul>
+    <p class="empty" id="empty">No saved themes yet.</p>
+  </section>
+
+  <p class="note" id="where"></p>
+</main>
+
+<script>
+(function () {
+  var TOKENS = {
+    '--color-primary': { type: 'color', def: '#4f46e5' },
+    '--color-surface': { type: 'color', def: '#ffffff' },
+    '--radius-md':     { type: 'px', min: 0, max: 32, def: '8px' },
+    '--space-4':       { type: 'px', min: 4, max: 40, def: '16px' },
+    '--type-base':     { type: 'px', min: 12, max: 24, def: '16px' }
+  };
+  var STORE_KEY = 'share-playground.themes.v1';
+  var root = document.documentElement;
+  var current = {};
+
+  // Accept only well-formed values; anything else becomes the default.
+  function clean(obj) {
+    var out = {};
+    Object.keys(TOKENS).forEach(function (k) {
+      var t = TOKENS[k], v = obj && obj[k];
+      var ok = false;
+      if (typeof v === 'string') {
+        if (t.type === 'color') ok = /^#[0-9a-fA-F]{6}$/.test(v);
+        else {
+          var m = /^(\d{1,2})px$/.exec(v);
+          ok = !!m && +m[1] >= t.min && +m[1] <= t.max;
+        }
+      }
+      out[k] = ok ? v.toLowerCase() : t.def;
+    });
+    return out;
+  }
+
+  function apply(vals) {
+    current = clean(vals);
+    Object.keys(current).forEach(function (k) { root.style.setProperty(k, current[k]); });
+    document.querySelectorAll('[data-token]').forEach(function (el) {
+      var k = el.dataset.token, v = current[k];
+      el.value = TOKENS[k].type === 'px' ? parseInt(v, 10) : v;
+      el.nextElementSibling.textContent = v;
+    });
+  }
+
+  // ---- read-only mode via ?s= ----
+  var sParam = new URLSearchParams(location.search).get('s');
+  var shared = null;
+  if (sParam !== null) {
+    try {
+      var json = atob(sParam.replace(/ /g, '+'));
+      var parsed = JSON.parse(json);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) shared = parsed;
+    } catch (e) {}
+  }
+  var readOnly = sParam !== null;
+
+  var where = document.getElementById('where');
+  if (readOnly) {
+    document.body.classList.add('readonly');
+    document.getElementById('badge').hidden = false;
+    document.getElementById('editor').hidden = true;
+    document.getElementById('saving').hidden = true;
+    apply(shared || {});
+    where.textContent = shared
+      ? 'This is a view-only link: the values live in the link itself, nothing is stored, and you can look but not change anything.'
+      : 'This link’s values could not be read, so the defaults are shown. View-only: nothing can be changed here.';
+    return;
+  }
+
+  where.textContent = 'Saved themes live in this browser’s local storage on this device only. ' +
+    'Only people using this browser profile can see them; they are never uploaded. ' +
+    'A view-only link, by contrast, carries its values in the URL and shows them to anyone who has the link.';
+
+  // ---- editing ----
+  var inputs = document.querySelectorAll('[data-token]');
+  function read() {
+    var v = {};
+    inputs.forEach(function (el) {
+      var k = el.dataset.token;
+      v[k] = TOKENS[k].type === 'px' ? el.value + 'px' : el.value;
+    });
+    return v;
+  }
+  inputs.forEach(function (el) { el.addEventListener('input', function () { apply(read()); }); });
+  document.getElementById('reset').addEventListener('click', function () { apply({}); });
+  apply({});
+
+  var status = document.getElementById('status'), statusTimer;
+  function say(msg) {
+    status.textContent = msg; clearTimeout(statusTimer);
+    statusTimer = setTimeout(function () { status.textContent = ''; }, 3500);
+  }
+
+  // ---- sharing ----
+  document.getElementById('copy').addEventListener('click', function () {
+    var link = location.href.split(/[?#]/)[0] + '?s=' + encodeURIComponent(btoa(JSON.stringify(current)));
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = link; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      if (ok) say('View-only link copied.');
+      else window.prompt('Copy this view-only link:', link);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(function () { say('View-only link copied.'); }, fallback);
+    } else fallback();
+  });
+
+  // ---- saving ----
+  function loadAll() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (t) { return t && typeof t.name === 'string' && t.values; });
+    } catch (e) { return []; }
+  }
+  function saveAll(arr) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(arr)); return true; }
+    catch (e) { say('Could not save: browser storage is unavailable.'); return false; }
+  }
+
+  var list = document.getElementById('themes'), empty = document.getElementById('empty');
+  function render() {
+    var all = loadAll();
+    list.textContent = '';
+    empty.hidden = all.length > 0;
+    all.forEach(function (t, i) {
+      var vals = clean(t.values);
+      var li = document.createElement('li');
+      var sw = document.createElement('span'); sw.className = 'swatch'; sw.style.background = vals['--color-primary'];
+      var nm = document.createElement('span'); nm.className = 'name'; nm.textContent = t.name;
+      var ld = document.createElement('button'); ld.className = 'ctl'; ld.type = 'button'; ld.textContent = 'Load';
+      ld.addEventListener('click', function () { apply(vals); say('Loaded “' + t.name + '”.'); });
+      var de = document.createElement('button'); de.className = 'ctl'; de.type = 'button'; de.textContent = 'Delete';
+      de.addEventListener('click', function () {
+        var cur = loadAll(); cur.splice(i, 1);
+        if (saveAll(cur)) render();
+      });
+      li.append(sw, nm, ld, de);
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('save').addEventListener('click', function () {
+    var name = window.prompt('Name this theme:');
+    if (name === null) return;
+    name = name.trim().slice(0, 60);
+    if (!name) { say('Theme not saved: a name is required.'); return; }
+    var all = loadAll();
+    var idx = all.findIndex(function (t) { return t.name === name; });
+    var entry = { name: name, values: current };
+    if (idx >= 0) {
+      if (!window.confirm('A theme named “' + name + '” exists. Replace it?')) return;
+      all[idx] = entry;
+    } else all.push(entry);
+    if (saveAll(all)) { render(); say('Saved “' + name + '”.'); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
